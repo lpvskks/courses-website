@@ -1,0 +1,29 @@
+<div class="login-card">
+
+  <h1 class="title">Войти</h1>
+
+  <input
+    class="input"
+    type="email"
+    placeholder="Введите email"
+    [value]="email()"
+    (input)="onEmailChange($event)"
+  />
+
+  <input
+    class="input"
+    type="password"
+    placeholder="Введите пароль"
+    [value]="password()"
+    (input)="onPasswordChange($event)"
+  />
+
+  <button
+    mat-flat-button
+    class="login-button"
+    (click)="onLogin()"
+  >
+    Войти
+  </button>
+
+</div>

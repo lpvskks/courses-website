@@ -1,0 +1,39 @@
+.login-card{
+  width:360px;
+  padding:40px;
+  border-radius:20px;
+  background:white;
+  box-shadow:0 10px 30px rgba(0,0,0,0.1);
+
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+
+.title{
+  text-align:center;
+  color: #005cbb;
+  margin-bottom:10px;
+}
+
+.input{
+  height:48px;
+  border-radius:30px;
+  border:1px solid #d0e2ff;
+  padding:0 20px;
+  font-size:14px;
+  outline:none;
+
+  transition:all .2s;
+}
+
+.input:focus{
+  border-color:#1976d2;
+  box-shadow:0 0 0 2px rgba(25,118,210,0.15);
+}
+
+.login-button{
+  height:48px;
+  border-radius:30px;
+  font-size:16px;
+}

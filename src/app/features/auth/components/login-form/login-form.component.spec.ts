@@ -23,7 +23,7 @@ describe('LoginFormComponent', () => {
 
     const result = component.isFormValid();
 
-    expect(result).toBeFalse();
+    expect(result).toBe(false);
   });
 
   it('если пароль пустой, то форма должна быть невалидной', () => {
@@ -33,7 +33,7 @@ describe('LoginFormComponent', () => {
 
     const result = component.isFormValid();
 
-    expect(result).toBeFalse();
+    expect(result).toBe(false);
   });
 
   it('если email имеет неправильный формат, то форма должна быть невалидной', () => {
@@ -43,7 +43,7 @@ describe('LoginFormComponent', () => {
 
     const result = component.isFormValid();
 
-    expect(result).toBeFalse();
+    expect(result).toBe(false);
   });
 
   it('если пароль меньше 8 символов, то форма должна быть невалидной', () => {
@@ -53,7 +53,7 @@ describe('LoginFormComponent', () => {
 
     const result = component.isFormValid();
 
-    expect(result).toBeFalse();
+    expect(result).toBe(false);
   });
 
   it('если email и пароль корректные, то форма должна быть валидной', () => {
@@ -63,6 +63,6 @@ describe('LoginFormComponent', () => {
 
     const result = component.isFormValid();
 
-    expect(result).toBeTrue();
+    expect(result).toBe(true);
   });
 });
