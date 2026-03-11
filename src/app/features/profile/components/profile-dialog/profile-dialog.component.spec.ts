@@ -2,6 +2,10 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialogRef } from '@angular/material/dialog';
 import { of, throwError } from 'rxjs';
 
+import { ProfileDialogComponent } from './profile-dialog.component';
+import { ProfileService } from '../../services/profile.service';
+import { UpdateUserProfileRequest, UserProfileResponse } from '../../../../core/models/user-profile.model';
+
 describe('ProfileDialogComponent', () => {
   let component: ProfileDialogComponent;
   let fixture: ComponentFixture<ProfileDialogComponent>;
@@ -126,7 +130,7 @@ describe('ProfileDialogComponent', () => {
     component.form.controls.firstName.setValue('  Анна  ');
     component.form.controls.lastName.setValue('  Петрова  ');
     component.form.controls.middleName.setValue('  Сергеевна  ');
-    component.form.controls.email.setValue('  anna@test.com  ');
+    component.form.controls.email.setValue('anna@test.com');
 
     component.save();
 

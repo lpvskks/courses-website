@@ -1,0 +1,119 @@
+<div class="profile-dialog">
+  <div class="profile-dialog__header">
+    <div>
+      <h2 class="profile-dialog__title">Профиль</h2>
+      <p class="profile-dialog__subtitle">Информация о вас</p>
+    </div>
+
+    <div class="profile-dialog__actions-top">
+      <button
+        *ngIf="!isLoading()"
+        type="button"
+        class="icon-btn"
+        matTooltip="Редактировать профиль"
+        matTooltipPosition="below"
+        (click)="enableEdit()"
+        [disabled]="isEditMode()"
+      >
+        <mat-icon>edit</mat-icon>
+      </button>
+
+      <button
+        type="button"
+        class="icon-btn"
+        matTooltip="Закрыть"
+        matTooltipPosition="below"
+        (click)="close()"
+      >
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <form
+    *ngIf="!isLoading() && !loadError()"
+    [formGroup]="form"
+    class="profile-form"
+  >
+    <div class="input-group">
+      <input
+        class="input"
+        [class.input-error]="!!firstNameError"
+        type="text"
+        placeholder="Введите имя"
+        formControlName="firstName"
+      />
+      <div class="error-message" *ngIf="firstNameError">
+        {{ firstNameError }}
+      </div>
+    </div>
+
+    <div class="input-group">
+      <input
+        class="input"
+        [class.input-error]="!!lastNameError"
+        type="text"
+        placeholder="Введите фамилию"
+        formControlName="lastName"
+      />
+      <div class="error-message" *ngIf="lastNameError">
+        {{ lastNameError }}
+      </div>
+    </div>
+
+    <div class="input-group">
+      <input
+        class="input"
+        [class.input-error]="!!middleNameError"
+        type="text"
+        placeholder="Введите отчество"
+        formControlName="middleName"
+      />
+      <div class="error-message" *ngIf="middleNameError">
+        {{ middleNameError }}
+      </div>
+    </div>
+
+    <div class="input-group">
+      <input
+        class="input"
+        [class.input-error]="!!emailError"
+        type="email"
+        placeholder="Введите email"
+        formControlName="email"
+      />
+      <div class="error-message" *ngIf="emailError">
+        {{ emailError }}
+      </div>
+    </div>
+
+    <div class="success-banner" *ngIf="successMessage()">
+      {{ successMessage() }}
+    </div>
+
+    <div class="error-banner" *ngIf="submitError()">
+      {{ submitError() }}
+    </div>
+
+    <div class="profile-dialog__footer" *ngIf="isEditMode()">
+      <button
+        type="button"
+        class="secondary-btn"
+        (click)="cancelEdit()"
+        [disabled]="isSaving()"
+      >
+        Отмена
+      </button>
+
+      <button
+        type="button"
+        mat-flat-button
+        class="save-btn"
+        (click)="save()"
+        [disabled]="isSaving()"
+      >
+        {{ isSaving() ? 'Сохранение...' : 'Сохранить' }}
+      </button>
+    </div>
+  </form>
+</div>
