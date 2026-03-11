@@ -1,0 +1,23 @@
+<header class="header">
+  <div class="header__brand">
+    <span class="header__logo">Марсик</span>
+  </div>
+
+  <div class="header__right">
+    <nav class="header__nav">
+      <a routerLink="/courses" routerLinkActive="active" class="header__link"> Курсы </a>
+
+      <a routerLink="/users" routerLinkActive="active" class="header__link"> Пользователи </a>
+    </nav>
+
+    <button
+      class="profile-btn"
+      type="button"
+      matTooltip="Открыть профиль"
+      matTooltipPosition="below"
+      (click)="openProfile()"
+    >
+      <mat-icon>account_circle</mat-icon>
+    </button>
+  </div>
+</header>
