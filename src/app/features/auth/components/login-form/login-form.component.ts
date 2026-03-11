@@ -20,14 +20,25 @@ export class LoginFormComponent {
   email = signal('');
   password = signal('');
 
+  emailError = signal('');
+  passwordError = signal('');
+
   onEmailChange(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.email.set(value);
+
+    if (this.emailError()) {
+      this.validateAndSetErrors();
+    }
   }
 
   onPasswordChange(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.password.set(value);
+
+    if (this.passwordError()) {
+      this.validateAndSetErrors();
+    }
   }
 
   isFormValid(): boolean {
@@ -45,6 +56,30 @@ export class LoginFormComponent {
     return true;
   }
 
+  private validateAndSetErrors(): boolean {
+    const email = this.email();
+    const password = this.password();
+
+    this.emailError.set('');
+    this.passwordError.set('');
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!email) {
+      this.emailError.set('Введите email');
+    } else if (!emailRegex.test(email)) {
+      this.emailError.set('Введите корректный email');
+    }
+
+    if (!password) {
+      this.passwordError.set('Введите пароль');
+    } else if (password.length < 8) {
+      this.passwordError.set('Пароль должен быть не менее 8 символов');
+    }
+
+    return this.isFormValid();
+  }
+
   buildRequest(): LoginRequest {
     return {
       email: this.email(),
@@ -53,7 +88,7 @@ export class LoginFormComponent {
   }
 
   onLogin(): void {
-    if (!this.isFormValid()) {
+    if (!this.validateAndSetErrors()) {
       console.warn('Форма невалидна');
       return;
     }

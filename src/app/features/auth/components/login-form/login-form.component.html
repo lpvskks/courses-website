@@ -1,22 +1,31 @@
 <div class="login-card">
-
   <h1 class="title">Войти</h1>
 
   <input
     class="input"
+    [class.input-error]="!!emailError()"
     type="email"
     placeholder="Введите email"
     [value]="email()"
     (input)="onEmailChange($event)"
   />
 
+  <div class="error-message" *ngIf="emailError()">
+    {{ emailError() }}
+  </div>
+
   <input
     class="input"
+    [class.input-error]="!!passwordError()"
     type="password"
     placeholder="Введите пароль"
     [value]="password()"
     (input)="onPasswordChange($event)"
   />
+
+  <div class="error-message" *ngIf="passwordError()">
+    {{ passwordError() }}
+  </div>
 
   <button
     mat-flat-button
@@ -25,5 +34,4 @@
   >
     Войти
   </button>
-
 </div>
