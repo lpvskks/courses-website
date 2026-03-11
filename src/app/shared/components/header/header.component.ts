@@ -4,7 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
 import { RouterLink, RouterLinkActive } from '@angular/router';
-import { ProfileDialogComponent } from '../../../profile-dialog.component';
+import { ProfileDialogComponent } from '../../../features/profile/components/profile-dialog/profile-dialog.component';
 
 @Component({
   selector: 'app-header',
