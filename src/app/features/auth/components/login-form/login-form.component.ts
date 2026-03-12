@@ -1,10 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { Router } from '@angular/router';
+import { of, switchMap, tap, finalize } from 'rxjs';
+
 import { LoginRequest } from '../../../../core/models/auth';
 import { AuthService } from '../../services/auth.service';
+import { UserService } from '../../../../core/services/user.service';
+import { CoursesService } from '../../../courses/services/courses.service';
 
 @Component({
   selector: 'app-login-form',
@@ -17,11 +22,17 @@ import { AuthService } from '../../services/auth.service';
 export class LoginFormComponent {
   constructor(private readonly authService: AuthService) {}
 
+  private readonly router = inject(Router);
+  private readonly userService = inject(UserService);
+  private readonly coursesService = inject(CoursesService);
+
   email = signal('');
   password = signal('');
 
   emailError = signal('');
   passwordError = signal('');
+  submitError = signal('');
+  isSubmitting = signal(false);
 
   onEmailChange(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
@@ -88,20 +99,46 @@ export class LoginFormComponent {
   }
 
   onLogin(): void {
+    this.submitError.set('');
+
     if (!this.validateAndSetErrors()) {
-      console.warn('Форма невалидна');
       return;
     }
 
     const request = this.buildRequest();
 
-    this.authService.login(request).subscribe({
-      next: (response) => {
-        console.log('Успешный вход', response);
-      },
-      error: (err) => {
-        console.error('Ошибка входа', err);
-      },
-    });
+    this.isSubmitting.set(true);
+
+    this.authService
+      .login(request)
+      .pipe(
+        switchMap(() => this.userService.getMyRole()),
+        tap((roleResponse) => {
+          localStorage.setItem('user_role', roleResponse.role);
+        }),
+        switchMap((roleResponse) => {
+          if (roleResponse.role === 'Admin') {
+            return this.coursesService.getCourses();
+          }
+
+          if (roleResponse.role === 'Teacher') {
+            return this.coursesService.getMyCourses();
+          }
+
+          return of(null);
+        }),
+        finalize(() => {
+          this.isSubmitting.set(false);
+        }),
+      )
+      .subscribe({
+        next: () => {
+          this.router.navigate(['/users']);
+        },
+        error: (err) => {
+          console.error(err);
+          this.submitError.set('Не удалось выполнить вход');
+        },
+      });
   }
 }

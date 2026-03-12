@@ -1,0 +1,52 @@
+<section class="courses-page">
+  <div class="courses-page__hero">
+    <div>
+      <h1 class="courses-page__title">Курсы</h1>
+      <p class="courses-page__subtitle">
+        Управление учебными курсами в системе Марсик
+      </p>
+    </div>
+  </div>
+
+  <ng-container *ngIf="courses().length">
+    <div class="courses-section" *ngIf="activeCourses().length">
+      <h2 class="courses-section__title">Активные курсы</h2>
+
+      <div class="courses-grid">
+        <article class="course-card" *ngFor="let course of activeCourses()">
+          <div class="course-card__top">
+            <div class="course-card__status course-card__status--active">
+              {{ course.code }}
+            </div>
+          </div>
+
+          <h3 class="course-card__title">{{ course.name }}</h3>
+
+          <p class="course-card__description">
+            {{ course.description }}
+          </p>
+        </article>
+      </div>
+    </div>
+
+    <div class="courses-section" *ngIf="inactiveCourses().length">
+      <h2 class="courses-section__title">Неактивные курсы</h2>
+
+      <div class="courses-grid">
+        <article class="course-card course-card--inactive" *ngFor="let course of inactiveCourses()">
+          <div class="course-card__top">
+            <div class="course-card__status course-card__status--inactive">
+               {{ course.code }}
+            </div>
+          </div>
+
+          <h3 class="course-card__title">{{ course.name }}</h3>
+
+          <p class="course-card__description">
+            {{ course.description }}
+          </p>
+        </article>
+      </div>
+    </div>
+  </ng-container>
+</section>
