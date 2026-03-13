@@ -4,6 +4,7 @@ import { of, throwError } from 'rxjs';
 
 import { CourseDetailsComponent } from './course-details.component';
 import { Course, CoursesService } from '../../services/courses.service';
+import { Assignment } from '../../../../core/models/assigment.model';
 
 describe('CourseDetailsComponent', () => {
   let component: CourseDetailsComponent;
@@ -34,19 +35,23 @@ describe('CourseDetailsComponent', () => {
   const assignmentsResponse: Assignment[] = [
     {
       id: 'a1',
+      courseId: 'course-1',
       title: 'Задание 1',
       text: 'Описание задания 1',
       requiresSubmission: true,
       deadline: '2026-03-20T10:00:00Z',
       created: '2026-03-10T10:00:00Z',
+      files: [],
     },
     {
       id: 'a2',
+      courseId: 'course-1',
       title: 'Задание 2',
       text: 'Описание задания 2',
       requiresSubmission: false,
       deadline: '2026-03-21T12:00:00Z',
       created: '2026-03-11T10:00:00Z',
+      files: [],
     },
   ];
 

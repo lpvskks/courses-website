@@ -1,5 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { of } from 'rxjs';
+import { provideRouter } from '@angular/router';
+
 import { CoursesComponent } from './courses.component';
 import { Course, CoursesService } from '../../services/courses.service';
 
@@ -57,6 +59,7 @@ describe('CoursesComponent', () => {
     await TestBed.configureTestingModule({
       imports: [CoursesComponent],
       providers: [
+        provideRouter([]),
         { provide: CoursesService, useValue: coursesServiceMock },
       ],
     }).compileComponents();
