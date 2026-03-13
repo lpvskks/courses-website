@@ -14,11 +14,18 @@ import { Course, CoursesService } from '../../services/courses.service';
 import { Assignment } from '../../../../core/models/assigment.model';
 import { AssignmentCardComponent } from '../../../assignments/components/assignment-card/assignment-card.component';
 import { CourseBannerComponent } from '../../components/course-banner/course-banner.component';
+import { CreateAssignmentModalComponent } from '../../../assignments/components/create-assignment-modal/create-assignment-modal.component';
 
 @Component({
   selector: 'app-course-details',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, CourseBannerComponent, AssignmentCardComponent],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    CourseBannerComponent,
+    AssignmentCardComponent,
+    CreateAssignmentModalComponent,
+  ],
   templateUrl: './course-details.component.html',
   styleUrl: './course-details.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -34,6 +41,7 @@ export class CourseDetailsComponent implements OnInit {
   isCourseLoading = signal(true);
   isAssignmentsLoading = signal(true);
   isSaving = signal(false);
+  isCreateAssignmentModalOpen = signal(false);
 
   currentPage = signal(1);
   pageSize = signal(6);
@@ -214,6 +222,30 @@ export class CourseDetailsComponent implements OnInit {
     }
 
     this.router.navigate(['/courses', course.id, 'assignments', assignmentId]);
+  }
+
+  openCreateAssignmentModal(): void {
+    if (!this.isAdmin()) {
+      return;
+    }
+
+    this.isCreateAssignmentModalOpen.set(true);
+  }
+
+  closeCreateAssignmentModal(): void {
+    this.isCreateAssignmentModalOpen.set(false);
+  }
+
+  handleAssignmentCreated(): void {
+    const course = this.course();
+
+    this.isCreateAssignmentModalOpen.set(false);
+
+    if (!course) {
+      return;
+    }
+
+    this.loadAssignments(course.id, 1);
   }
 
   get nameError(): string {

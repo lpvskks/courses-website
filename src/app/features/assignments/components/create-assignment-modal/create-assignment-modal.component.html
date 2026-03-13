@@ -1,0 +1,150 @@
+<div
+  class="assignment-modal-overlay"
+  (click)="onBackdropClick($event)"
+  (keydown.escape)="onEsc()"
+  tabindex="0"
+>
+  <section class="assignment-modal">
+    <div class="assignment-modal__header">
+      <div>
+        <h2 class="assignment-modal__title">Новое задание</h2>
+        <p class="assignment-modal__subtitle">
+          Создайте задание, укажите дедлайн и при необходимости прикрепите файлы
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="icon-btn"
+        (click)="close()"
+        [disabled]="isSaving()"
+        aria-label="Закрыть"
+      >
+        ×
+      </button>
+    </div>
+
+    <div *ngIf="submitError()" class="banner banner--error">
+      {{ submitError() }}
+    </div>
+
+    <form class="assignment-form" [formGroup]="form" (ngSubmit)="save()">
+      <section class="form-card">
+        <div class="form-section__header">
+          <h3 class="form-section__title">Основная информация</h3>
+        </div>
+
+        <div class="form-grid">
+          <div class="field field--full">
+            <label class="field__label" for="assignment-title">Название задания</label>
+            <input
+              id="assignment-title"
+              class="field__control"
+              type="text"
+              formControlName="title"
+              placeholder="Например: Реализовать страницу курса"
+            />
+            <div *ngIf="titleError" class="field__error">{{ titleError }}</div>
+          </div>
+
+          <div class="field field--full">
+            <label class="field__label" for="assignment-text">Описание</label>
+            <textarea
+              id="assignment-text"
+              class="field__control field__control--textarea"
+              formControlName="text"
+              rows="8"
+              placeholder="Подробно опишите, что нужно сделать"
+            ></textarea>
+            <div *ngIf="textError" class="field__error">{{ textError }}</div>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="assignment-deadline">Дедлайн</label>
+            <input
+              id="assignment-deadline"
+              class="field__control"
+              type="datetime-local"
+              formControlName="deadline"
+            />
+            <div *ngIf="deadlineError" class="field__error">{{ deadlineError }}</div>
+          </div>
+
+          <div class="field field--checkbox">
+            <label class="checkbox-card">
+              <input type="checkbox" formControlName="requiresSubmission" />
+              <span>
+                <strong>Требуется сдача</strong>
+              </span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="form-card">
+        <div class="form-section__header">
+          <h3 class="form-section__title">Файлы</h3>
+          <span class="form-section__hint">Изображения, документы, видео</span>
+        </div>
+
+        <label class="upload-zone">
+          <input
+            type="file"
+            hidden
+            multiple
+            accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
+            (change)="onFilesSelected($event)"
+          />
+
+          <div class="upload-zone__icon">↑</div>
+          <div class="upload-zone__title">Нажмите, чтобы выбрать файлы</div>
+          <div class="upload-zone__subtitle">
+            Можно загружать фото, документы и видео
+          </div>
+        </label>
+
+        <div *ngIf="selectedFiles().length" class="files-list">
+          <article
+            class="file-chip"
+            *ngFor="let file of selectedFiles(); let i = index; trackBy: trackByFile"
+          >
+            <div class="file-chip__info">
+              <div class="file-chip__name">{{ file.name }}</div>
+              <div class="file-chip__meta">
+                {{ file.type || 'Файл без mime-type' }} • {{ formatFileSize(file.size) }}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="file-chip__remove"
+              (click)="removeFile(i)"
+              [disabled]="isSaving()"
+            >
+              Удалить
+            </button>
+          </article>
+        </div>
+      </section>
+
+      <div class="assignment-modal__actions">
+        <button
+          type="button"
+          class="secondary-btn"
+          (click)="close()"
+          [disabled]="isSaving()"
+        >
+          Отмена
+        </button>
+
+        <button
+          type="submit"
+          class="primary-btn"
+          [disabled]="isSaving()"
+        >
+          {{ isSaving() ? 'Создание...' : 'Создать задание' }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>

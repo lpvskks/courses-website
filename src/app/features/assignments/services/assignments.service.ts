@@ -23,4 +23,24 @@ export class AssignmentsService {
   createComment(assignmentId: string, payload: { text: string }): Observable<AssignmentComment> {
     return this.http.post<AssignmentComment>(`${this.baseUrl}/${assignmentId}/comments`, payload);
   }
+
+  createAssignment(payload: {
+    courseId: string;
+    title: string;
+    text: string;
+    requiresSubmission: boolean;
+    deadline: string;
+  }): Observable<Assignment> {
+    return this.http.post<Assignment>(this.baseUrl, payload);
+  }
+
+  uploadAssignmentFiles(assignmentId: string, files: File[]): Observable<void> {
+    const formData = new FormData();
+
+    files.forEach((file) => {
+      formData.append('files', file);
+    });
+
+    return this.http.post<void>(`${this.baseUrl}/${assignmentId}/files`, formData);
+  }
 }

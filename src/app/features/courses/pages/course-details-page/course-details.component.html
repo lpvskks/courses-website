@@ -21,9 +21,16 @@
 
     <section class="assignments-section">
       <div class="assignments-section__header">
-        <div>
-          <h2 class="assignments-section__title">Задания курса</h2>
-        </div>
+        <h2 class="assignments-section__title">Задания курса</h2>
+
+        <button
+          *ngIf="isAdmin()"
+          type="button"
+          class="add-assignment-btn"
+          (click)="openCreateAssignmentModal()"
+        >
+          Добавить задание
+        </button>
       </div>
 
       <div class="assignments-loading" *ngIf="isAssignmentsLoading()">Загрузка заданий...</div>
@@ -62,5 +69,12 @@
         </button>
       </div>
     </section>
+
+    <app-create-assignment-modal
+      *ngIf="isCreateAssignmentModalOpen() && course() as currentCourse"
+      [courseId]="currentCourse.id"
+      (closed)="closeCreateAssignmentModal()"
+      (created)="handleAssignmentCreated()"
+    />
   </ng-container>
 </section>
