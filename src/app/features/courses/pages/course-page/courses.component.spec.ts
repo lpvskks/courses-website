@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { CoursesComponent } from './courses.component';
-import { Course, CoursesService } from '../services/courses.service';
+import { Course, CoursesService } from '../../services/courses.service';
 
 describe('CoursesComponent', () => {
   let component: CoursesComponent;

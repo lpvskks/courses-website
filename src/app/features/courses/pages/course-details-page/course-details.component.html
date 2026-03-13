@@ -1,0 +1,65 @@
+<section class="course-details-page">
+  <div *ngIf="loadError()" class="error-banner">
+    {{ loadError() }}
+  </div>
+
+  <ng-container *ngIf="course() as currentCourse">
+    <app-course-banner
+      [course]="currentCourse"
+      [form]="form"
+      [isAdmin]="isAdmin()"
+      [isEditMode]="isEditMode()"
+      [isSaving]="isSaving()"
+      [submitError]="submitError()"
+      [nameError]="nameError"
+      [descriptionError]="descriptionError"
+      (openUsers)="openCourseUsers()"
+      (enableEdit)="enableEdit()"
+      (cancelEdit)="cancelEdit()"
+      (save)="save()"
+    />
+
+    <section class="assignments-section">
+      <div class="assignments-section__header">
+        <div>
+          <h2 class="assignments-section__title">Задания курса</h2>
+        </div>
+      </div>
+
+      <div class="assignments-loading" *ngIf="isAssignmentsLoading()">Загрузка заданий...</div>
+
+      <div class="assignments-list" *ngIf="!isAssignmentsLoading() && assignments().length">
+        <app-assignment-card
+          *ngFor="let assignment of assignments()"
+          [assignment]="assignment"
+        />
+      </div>
+
+      <div class="empty-state" *ngIf="!isAssignmentsLoading() && !assignments().length">
+        У этого курса пока нет заданий.
+      </div>
+
+      <div class="pagination" *ngIf="totalPages() > 1">
+        <button
+          type="button"
+          class="pagination-btn"
+          (click)="goToPreviousPage()"
+          [disabled]="currentPage() === 1"
+        >
+          Назад
+        </button>
+
+        <div class="pagination__info">{{ currentPage() }} / {{ totalPages() }}</div>
+
+        <button
+          type="button"
+          class="pagination-btn"
+          (click)="goToNextPage()"
+          [disabled]="currentPage() === totalPages()"
+        >
+          Вперёд
+        </button>
+      </div>
+    </section>
+  </ng-container>
+</section>

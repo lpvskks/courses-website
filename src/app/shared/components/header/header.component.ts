@@ -3,8 +3,9 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { ProfileDialogComponent } from '../../../features/profile/components/profile-dialog/profile-dialog.component';
+import { AuthService } from '../../../features/auth/services/auth.service';
 
 @Component({
   selector: 'app-header',
@@ -16,6 +17,8 @@ import { ProfileDialogComponent } from '../../../features/profile/components/pro
 })
 export class HeaderComponent {
   private readonly dialog = inject(MatDialog);
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   openProfile(): void {
     this.dialog.open(ProfileDialogComponent, {
@@ -26,4 +29,8 @@ export class HeaderComponent {
     });
   }
 
+  logout(): void {
+    this.authService.logout();
+    this.router.navigate(['/login']);
+  }
 }

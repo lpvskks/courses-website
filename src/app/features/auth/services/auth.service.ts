@@ -7,7 +7,7 @@ import { LoginRequest, LoginResponse } from '../../../core/models/auth';
   providedIn: 'root',
 })
 export class AuthService {
-  private apiUrl = 'https://localhost:7226/api/auth/login'; 
+  private apiUrl = 'https://localhost:7226/api/auth/login';
 
   constructor(private http: HttpClient) {}
 
@@ -17,5 +17,10 @@ export class AuthService {
         localStorage.setItem('token', response.token);
       }),
     );
+  }
+
+  logout(): void {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user_role');
   }
 }

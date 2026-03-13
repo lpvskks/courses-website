@@ -2,9 +2,7 @@
   <div class="courses-page__hero">
     <div>
       <h1 class="courses-page__title">Курсы</h1>
-      <p class="courses-page__subtitle">
-        Управление учебными курсами в системе Марсик
-      </p>
+      <p class="courses-page__subtitle">Управление учебными курсами в системе Марсик</p>
     </div>
   </div>
 
@@ -13,7 +11,11 @@
       <h2 class="courses-section__title">Активные курсы</h2>
 
       <div class="courses-grid">
-        <article class="course-card" *ngFor="let course of activeCourses()">
+        <article
+          class="course-card"
+          *ngFor="let course of activeCourses()"
+          [routerLink]="['/courses', course.id]"
+        >
           <div class="course-card__top">
             <div class="course-card__status course-card__status--active">
               {{ course.code }}
@@ -36,7 +38,7 @@
         <article class="course-card course-card--inactive" *ngFor="let course of inactiveCourses()">
           <div class="course-card__top">
             <div class="course-card__status course-card__status--inactive">
-               {{ course.code }}
+              {{ course.code }}
             </div>
           </div>
 

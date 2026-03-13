@@ -1,0 +1,86 @@
+<section class="course-hero">
+  <div class="course-hero__content">
+    <div class="course-hero__top">
+      <div class="course-hero__badges">
+        <span class="course-status" [class.course-status--inactive]="!course.isActive">
+          {{ course.isActive ? 'Активный курс' : 'Неактивный курс' }}
+        </span>
+
+        <span class="course-code-badge">
+          {{ course.code }}
+        </span>
+      </div>
+
+      <div class="course-hero__actions">
+        <button
+          type="button"
+          class="ghost-btn"
+          matTooltip="Пользователи курса"
+          matTooltipPosition="below"
+          (click)="openUsers.emit()"
+        >
+          <mat-icon>groups</mat-icon>
+        </button>
+
+        <button
+          *ngIf="isAdmin"
+          type="button"
+          class="ghost-btn"
+          matTooltip="Редактировать курс"
+          matTooltipPosition="below"
+          (click)="enableEdit.emit()"
+          [disabled]="isEditMode"
+        >
+          <mat-icon>edit</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <form [formGroup]="form" class="course-form" (ngSubmit)="save.emit()">
+      <div class="input-group">
+        <input
+          class="input"
+          [class.input-error]="!!nameError"
+          type="text"
+          formControlName="name"
+          placeholder="Название курса"
+        />
+        <div class="error-message" *ngIf="nameError">
+          {{ nameError }}
+        </div>
+      </div>
+
+      <div class="input-group">
+        <textarea
+          class="textarea"
+          [class.input-error]="!!descriptionError"
+          formControlName="description"
+          placeholder="Описание курса"
+          rows="4"
+        ></textarea>
+        <div class="error-message" *ngIf="descriptionError">
+          {{ descriptionError }}
+        </div>
+      </div>
+
+      <div class="course-edit-actions" *ngIf="isEditMode">
+        <button
+          type="button"
+          class="secondary-btn"
+          (click)="cancelEdit.emit()"
+          [disabled]="isSaving"
+        >
+          Отмена
+        </button>
+
+        <button type="submit" mat-flat-button class="save-btn" [disabled]="isSaving">
+          {{ isSaving ? 'Сохранение...' : 'Сохранить' }}
+        </button>
+      </div>
+    </form>
+
+    <div class="error-banner" *ngIf="submitError">
+      {{ submitError }}
+    </div>
+  </div>
+</section>

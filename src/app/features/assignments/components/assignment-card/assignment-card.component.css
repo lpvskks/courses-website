@@ -1,0 +1,83 @@
+.assignment-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 22px;
+  align-items: center;
+
+  border-radius: 22px;
+  padding: 20px 22px;
+
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #dbeafe;
+
+  box-shadow: 0 8px 24px rgba(0, 92, 187, 0.08);
+
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.assignment-row:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(0, 92, 187, 0.12);
+}
+
+.assignment-row__badge {
+  display: flex;
+  align-items: center;
+}
+
+.assignment-badge {
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.16);
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.assignment-badge--submission {
+  background: rgba(0, 92, 187, 0.1);
+  color: #005cbb;
+}
+
+.assignment-row__content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.assignment-row__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.assignment-row__text {
+  margin: 0;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.assignment-row__meta {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+
+.assignment-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.assignment-meta__label {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.assignment-meta__value {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}

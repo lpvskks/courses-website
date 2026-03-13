@@ -1,0 +1,36 @@
+<article class="assignment-row">
+  <div class="assignment-row__badge">
+    <span
+      class="assignment-badge"
+      [class.assignment-badge--submission]="assignment.requiresSubmission"
+    >
+      {{ assignment.requiresSubmission ? 'Со сдачей' : 'Без сдачи' }}
+    </span>
+  </div>
+
+  <div class="assignment-row__content">
+    <h3 class="assignment-row__title">
+      {{ assignment.title }}
+    </h3>
+
+    <p class="assignment-row__text">
+      {{ assignment.text }}
+    </p>
+  </div>
+
+  <div class="assignment-row__meta">
+    <div class="assignment-meta">
+      <span class="assignment-meta__label">Дедлайн</span>
+      <span class="assignment-meta__value">
+        {{ assignment.deadline | date: 'dd.MM.yyyy HH:mm' }}
+      </span>
+    </div>
+
+    <div class="assignment-meta">
+      <span class="assignment-meta__label">Создано</span>
+      <span class="assignment-meta__value">
+        {{ assignment.created | date: 'dd.MM.yyyy' }}
+      </span>
+    </div>
+  </div>
+</article>

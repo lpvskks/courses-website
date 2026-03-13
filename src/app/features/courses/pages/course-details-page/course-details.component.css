@@ -1,0 +1,75 @@
+.course-details-page {
+  min-height: calc(100vh - 72px);
+  padding: 32px;
+  background:
+    radial-gradient(circle at top left, rgba(25, 118, 210, 0.10), transparent 28%),
+    linear-gradient(180deg, #f6faff 0%, #eef5ff 100%);
+}
+
+.assignments-section {
+  margin-top: 28px;
+}
+
+.assignments-section__header {
+  margin-bottom: 16px;
+}
+
+.assignments-section__title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.assignments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pagination {
+  margin-top: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+}
+
+.pagination-btn {
+  min-width: 110px;
+  height: 42px;
+  border: none;
+  border-radius: 999px;
+  background: #005cbb;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pagination-btn:disabled {
+  background: #bfd7f5;
+  cursor: not-allowed;
+}
+
+.pagination__info {
+  min-width: 82px;
+  text-align: center;
+  font-weight: 700;
+  color: #1e3a5f;
+}
+
+.assignments-loading,
+.empty-state,
+.error-banner {
+  border-radius: 18px;
+  padding: 16px 18px;
+  background: white;
+  border: 1px solid #dbeafe;
+}
+
+.error-banner {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
