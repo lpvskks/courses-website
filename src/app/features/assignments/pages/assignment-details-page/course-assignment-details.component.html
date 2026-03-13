@@ -1,0 +1,123 @@
+<section class="assignment-details-page">
+  <div class="assignment-details-page__topbar">
+    <button type="button" class="back-btn" (click)="back()">← Назад к курсу</button>
+
+    <button type="button" class="primary-btn" (click)="openSolutions()">
+      Открыть решения студентов
+    </button>
+  </div>
+
+  <div *ngIf="loadError()" class="banner banner--error">
+    {{ loadError() }}
+  </div>
+
+  <ng-container *ngIf="!isLoading() && assignment() as currentAssignment">
+    <section class="assignment-hero">
+      <div class="assignment-hero__badges">
+        <span
+          class="status-badge"
+          [class.status-badge--submission]="currentAssignment.requiresSubmission"
+        >
+          {{ currentAssignment.requiresSubmission ? 'Со сдачей' : 'Без сдачи' }}
+        </span>
+      </div>
+
+      <div class="assignment-hero__head">
+        <div class="assignment-hero__main">
+          <h1 class="assignment-hero__title">{{ currentAssignment.title }}</h1>
+
+          <p class="assignment-hero__text">
+            {{ currentAssignment.text }}
+          </p>
+        </div>
+
+        <div class="assignment-hero__meta">
+          <div class="meta-card">
+            <span class="meta-card__label">Дедлайн</span>
+            <span class="meta-card__value">
+              {{ currentAssignment.deadline | date: 'dd.MM.yyyy HH:mm' }}
+            </span>
+          </div>
+
+          <div class="meta-card">
+            <span class="meta-card__label">Создано</span>
+            <span class="meta-card__value">
+              {{ currentAssignment.created | date: 'dd.MM.yyyy HH:mm' }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="currentAssignment.files.length" class="assignment-files">
+        <div class="section-header section-header--inside-hero">
+          <h2 class="section-title">Файлы задания</h2>
+          <span class="section-count">{{ currentAssignment.files.length }}</span>
+        </div>
+
+        <div class="files-list files-list--inline">
+          <a
+            *ngFor="let file of currentAssignment.files; trackBy: trackByFileId"
+            class="file-card"
+            [href]="file.url"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <div class="file-card__icon">📎</div>
+
+            <div class="file-card__content">
+              <div class="file-card__name">{{ file.fileName }}</div>
+              <div class="file-card__meta">
+                {{ file.mimeType }} • {{ formatFileSize(file.size) }}
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="comments-card">
+      <div class="section-header">
+        <h2 class="section-title">Комментарии</h2>
+        <span class="section-count">{{ comments().length }}</span>
+      </div>
+
+      <form class="comment-form" [formGroup]="commentForm" (ngSubmit)="sendComment()">
+        <textarea
+          class="comment-form__textarea"
+          formControlName="text"
+          rows="4"
+          placeholder="Напишите комментарий к заданию..."
+        ></textarea>
+
+        <div class="comment-form__actions">
+          <button type="submit" class="primary-btn" [disabled]="isSendingComment()">
+            {{ isSendingComment() ? 'Отправка...' : 'Отправить комментарий' }}
+          </button>
+        </div>
+      </form>
+
+      <div *ngIf="!isCommentsLoading() && !comments().length" class="empty-card">
+        Комментариев пока нет.
+      </div>
+
+      <div *ngIf="!isCommentsLoading() && comments().length" class="comments-list">
+        <article class="comment-card" *ngFor="let comment of comments(); trackBy: trackByCommentId">
+          <div class="comment-card__header">
+            <div class="comment-card__avatar">
+              {{ comment.userName[0] || '?' }}
+            </div>
+
+            <div class="comment-card__info">
+              <div class="comment-card__author">{{ comment.userName }}</div>
+              <div class="comment-card__date">
+                {{ comment.created | date: 'dd.MM.yyyy HH:mm' }}
+              </div>
+            </div>
+          </div>
+
+          <p class="comment-card__text">{{ comment.text }}</p>
+        </article>
+      </div>
+    </section>
+  </ng-container>
+</section>

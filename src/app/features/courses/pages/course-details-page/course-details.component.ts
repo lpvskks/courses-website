@@ -207,6 +207,15 @@ export class CourseDetailsComponent implements OnInit {
     this.router.navigate(['/courses', course.id, 'users']);
   }
 
+  openAssignment(assignmentId: string): void {
+    const course = this.course();
+    if (!course) {
+      return;
+    }
+
+    this.router.navigate(['/courses', course.id, 'assignments', assignmentId]);
+  }
+
   get nameError(): string {
     const control = this.form.controls.name;
 

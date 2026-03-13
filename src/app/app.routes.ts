@@ -19,4 +19,11 @@ export const routes: Routes = [
         (m) => m.CourseUsersPageComponent,
       ),
   },
+  {
+    path: 'courses/:courseId/assignments/:assignmentId',
+    loadComponent: () =>
+      import('./features/assignments/pages/assignment-details-page/course-assignment-details.component').then(
+        (m) => m.CourseAssignmentDetailsComponent,
+      ),
+  },
 ];

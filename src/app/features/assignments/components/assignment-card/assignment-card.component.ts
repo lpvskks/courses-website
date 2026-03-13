@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 
 import { Assignment } from '../../../../core/models/assigment.model';
 
@@ -13,4 +13,9 @@ import { Assignment } from '../../../../core/models/assigment.model';
 })
 export class AssignmentCardComponent {
   @Input({ required: true }) assignment!: Assignment;
+  @Output() open = new EventEmitter<string>();
+
+  onOpen(): void {
+    this.open.emit(this.assignment.id);
+  }
 }
