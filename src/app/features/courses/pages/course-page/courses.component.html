@@ -4,6 +4,14 @@
       <h1 class="courses-page__title">Курсы</h1>
       <p class="courses-page__subtitle">Управление учебными курсами в системе Марсик</p>
     </div>
+    <button
+      *ngIf="isAdmin()"
+      type="button"
+      class="courses-page__create-btn"
+      (click)="openCreateModal()"
+    >
+      Создать курс
+    </button>
   </div>
 
   <ng-container *ngIf="courses().length">
@@ -52,3 +60,9 @@
     </div>
   </ng-container>
 </section>
+
+<app-create-course-modal
+  *ngIf="isCreateModalOpen()"
+  (closed)="closeCreateModal()"
+  (created)="onCourseCreated($event)"
+></app-create-course-modal>

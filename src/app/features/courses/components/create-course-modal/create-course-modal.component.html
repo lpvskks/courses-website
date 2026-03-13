@@ -1,0 +1,84 @@
+<div
+  class="course-modal-overlay"
+  (click)="onBackdropClick($event)"
+  (keydown.escape)="onEsc()"
+  tabindex="0"
+>
+  <section class="course-modal">
+
+    <div class="course-modal__header">
+      <div>
+        <h2 class="course-modal__title">Создание курса</h2>
+        <p class="course-modal__subtitle">
+          Заполните основную информацию о новом учебном курсе
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="icon-btn"
+        (click)="close()"
+        [disabled]="isSaving()"
+        aria-label="Закрыть"
+      >
+        ×
+      </button>
+    </div>
+
+    <div *ngIf="submitError()" class="banner banner--error">
+      {{ submitError() }}
+    </div>
+
+    <form class="course-form" [formGroup]="form" (ngSubmit)="save()">
+      <section class="form-card">
+
+        <div class="form-grid">
+          <div class="field field--full">
+            <label class="field__label" for="course-name">Название курса</label>
+            <input
+              id="course-name"
+              class="field__control"
+              type="text"
+              formControlName="name"
+              placeholder="Например: Основы лепки из глины"
+            />
+            <div *ngIf="nameError()" class="field__error">{{ nameError() }}</div>
+          </div>
+
+          <div class="field field--full">
+            <label class="field__label" for="course-description">Описание</label>
+            <textarea
+              id="course-description"
+              class="field__control field__control--textarea"
+              formControlName="description"
+              rows="8"
+              placeholder="Кратко опишите содержание курса, цели и особенности обучения"
+            ></textarea>
+            <div *ngIf="descriptionError()" class="field__error">
+              {{ descriptionError() }}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="course-modal__actions">
+        <button
+          type="button"
+          class="secondary-btn"
+          (click)="close()"
+          [disabled]="isSaving()"
+        >
+          Отмена
+        </button>
+
+        <button
+          type="submit"
+          class="primary-btn"
+          [disabled]="isSaving()"
+        >
+          {{ isSaving() ? 'Создание...' : 'Создать курс' }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>
