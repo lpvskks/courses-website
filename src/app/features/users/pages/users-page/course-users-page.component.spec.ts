@@ -1,6 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
+import { CourseUsersPageComponent } from './course-users-page.component';
+import { UsersService } from '../../services/users.service';
+import { CourseUser } from '../../../../core/models/course-user.model';
 
 describe('CourseUsersPageComponent', () => {
   let component: CourseUsersPageComponent;

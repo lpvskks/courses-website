@@ -15,8 +15,8 @@ export const routes: Routes = [
   {
     path: 'courses/:courseId/users',
     loadComponent: () =>
-      import('./features/courses/pages/course-users/course-users.component').then(
-        (m) => m.CourseUsersComponent,
+      import('./features/users/pages/users-page/course-users-page.component').then(
+        (m) => m.CourseUsersPageComponent,
       ),
   },
 ];

@@ -1,0 +1,123 @@
+<section class="course-users-page">
+  <div class="course-users-page__topbar">
+    <button type="button" class="back-btn" (click)="back()">← Назад к курсу</button>
+  </div>
+
+  <section class="course-users-hero">
+    <div>
+      <h1 class="course-users-hero__title">Пользователи курса</h1>
+      <p class="course-users-hero__subtitle">Управление преподавателями и студентами курса</p>
+    </div>
+  </section>
+
+  <ng-container>
+    <div class="users-layout">
+      <section class="users-block">
+        <div class="users-block__header">
+          <h2 class="users-block__title">Преподаватели</h2>
+          <span class="users-block__count">{{ teachers().length }}</span>
+        </div>
+
+        <div class="users-list" *ngIf="teachers().length; else emptyTeachers">
+          <article class="user-card" *ngFor="let teacher of teachers(); trackBy: trackByUserId">
+            <div class="user-card__info">
+              <div class="user-avatar">{{ teacher.firstName[0] }}{{ teacher.lastName[0] }}</div>
+
+              <div>
+                <div class="user-card__headline">
+                  <h3 class="user-card__name">{{ teacher.lastName }} {{ teacher.firstName }}</h3>
+
+                  <span *ngIf="teacher.role === 'Admin'" class="status-badge"> Админ </span>
+                </div>
+
+                <p class="user-card__email">{{ teacher.email }}</p>
+              </div>
+            </div>
+
+            <div class="user-card__actions" *ngIf="isAdmin() && teacher.role !== 'Admin'">
+              <button
+                type="button"
+                class="danger-btn"
+                (click)="removeTeacher(teacher)"
+                [disabled]="processingTeacherId() === teacher.id"
+              >
+                {{ processingTeacherId() === teacher.id ? 'Снятие...' : 'Снять с должности' }}
+              </button>
+            </div>
+          </article>
+        </div>
+
+        <ng-template #emptyTeachers>
+          <div class="empty-card">Преподаватели не найдены.</div>
+        </ng-template>
+      </section>
+
+      <section class="users-block">
+        <div class="users-block__header">
+          <h2 class="users-block__title">Студенты</h2>
+          <span class="users-block__count">{{ students().length }}</span>
+        </div>
+
+        <div class="users-list" *ngIf="sortedStudents().length; else emptyStudents">
+          <article
+            class="user-card"
+            *ngFor="let student of sortedStudents(); trackBy: trackByUserId"
+            [class.user-card--blocked]="student.isBlocked"
+          >
+            <div class="user-card__info">
+              <div class="user-avatar" [class.user-avatar--blocked]="student.isBlocked">
+                {{ student.firstName[0] }}{{ student.lastName[0] }}
+              </div>
+
+              <div>
+                <div class="user-card__headline">
+                  <h3 class="user-card__name">{{ student.lastName }} {{ student.firstName }}</h3>
+                </div>
+
+                <p class="user-card__email">{{ student.email }}</p>
+              </div>
+            </div>
+
+            <div class="user-card__actions">
+              <button
+                *ngIf="isAdmin() && !student.isBlocked"
+                type="button"
+                class="primary-btn"
+                (click)="assignTeacher(student)"
+                [disabled]="processingTeacherId() === student.id"
+              >
+                {{
+                  processingTeacherId() === student.id
+                    ? 'Назначение...'
+                    : 'Назначить преподавателем'
+                }}
+              </button>
+
+              <button
+                *ngIf="isAdmin() || isTeacher()"
+                type="button"
+                class="secondary-btn"
+                (click)="toggleStudentBlock(student)"
+                [disabled]="processingStudentId() === student.id"
+              >
+                {{
+                  processingStudentId() === student.id
+                    ? student.isBlocked
+                      ? 'Разблокировка...'
+                      : 'Блокировка...'
+                    : student.isBlocked
+                      ? 'Вернуть на курс'
+                      : 'Удалить из курса'
+                }}
+              </button>
+            </div>
+          </article>
+        </div>
+
+        <ng-template #emptyStudents>
+          <div class="empty-card">Студенты не найдены.</div>
+        </ng-template>
+      </section>
+    </div>
+  </ng-container>
+</section>

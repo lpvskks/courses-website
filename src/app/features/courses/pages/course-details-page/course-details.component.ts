@@ -18,12 +18,7 @@ import { CourseBannerComponent } from '../../components/course-banner/course-ban
 @Component({
   selector: 'app-course-details',
   standalone: true,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    CourseBannerComponent,
-    AssignmentCardComponent,
-  ],
+  imports: [CommonModule, ReactiveFormsModule, CourseBannerComponent, AssignmentCardComponent],
   templateUrl: './course-details.component.html',
   styleUrl: './course-details.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -140,51 +135,53 @@ export class CourseDetailsComponent implements OnInit {
     });
   }
 
- save(): void {
-  this.form.markAllAsTouched();
-  this.submitError.set('');
+  save(): void {
+    this.form.markAllAsTouched();
+    this.submitError.set('');
 
-  if (!this.isAdmin() || this.form.invalid) {
-    return;
-  }
+    if (!this.isAdmin() || this.form.invalid) {
+      return;
+    }
 
-  const currentCourse = this.course();
-  if (!currentCourse) {
-    return;
-  }
+    const currentCourse = this.course();
+    if (!currentCourse) {
+      return;
+    }
 
-  const updatedName = this.form.controls.name.getRawValue().trim();
-  const updatedDescription = this.form.controls.description.getRawValue().trim();
+    const updatedName = this.form.controls.name.getRawValue().trim();
+    const updatedDescription = this.form.controls.description.getRawValue().trim();
 
-  this.isSaving.set(true);
+    this.isSaving.set(true);
 
-  this.coursesService.updateCourse(currentCourse.id, {
-    name: updatedName,
-    description: updatedDescription,
-  }).subscribe({
-    next: () => {
-      this.course.set({
-        ...currentCourse,
+    this.coursesService
+      .updateCourse(currentCourse.id, {
         name: updatedName,
         description: updatedDescription,
-      });
+      })
+      .subscribe({
+        next: () => {
+          this.course.set({
+            ...currentCourse,
+            name: updatedName,
+            description: updatedDescription,
+          });
 
-      this.form.patchValue({
-        name: updatedName,
-        description: updatedDescription,
-      });
+          this.form.patchValue({
+            name: updatedName,
+            description: updatedDescription,
+          });
 
-      this.form.disable();
-      this.isEditMode.set(false);
-      this.isSaving.set(false);
-    },
-    error: (err) => {
-      console.error(err);
-      this.submitError.set('Не удалось сохранить изменения');
-      this.isSaving.set(false);
-    },
-  });
-}
+          this.form.disable();
+          this.isEditMode.set(false);
+          this.isSaving.set(false);
+        },
+        error: (err) => {
+          console.error(err);
+          this.submitError.set('Не удалось сохранить изменения');
+          this.isSaving.set(false);
+        },
+      });
+  }
 
   goToPreviousPage(): void {
     const course = this.course();
@@ -202,7 +199,10 @@ export class CourseDetailsComponent implements OnInit {
 
   openCourseUsers(): void {
     const course = this.course();
-    if (!course) return;
+
+    if (!course) {
+      return;
+    }
 
     this.router.navigate(['/courses', course.id, 'users']);
   }
