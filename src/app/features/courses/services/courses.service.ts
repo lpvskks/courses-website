@@ -55,4 +55,12 @@ export class CoursesService {
       },
     });
   }
+
+  archiveCourse(courseId: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${courseId}/archive`, {});
+  }
+
+  restoreCourse(courseId: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${courseId}/restore`, {});
+  }
 }

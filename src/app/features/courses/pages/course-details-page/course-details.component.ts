@@ -43,6 +43,10 @@ export class CourseDetailsComponent implements OnInit {
   isSaving = signal(false);
   isCreateAssignmentModalOpen = signal(false);
 
+  isArchiveActionLoading = signal(false);
+  archiveActionError = signal('');
+  archiveActionSuccess = signal('');
+
   currentPage = signal(1);
   pageSize = signal(6);
   totalPages = signal(1);
@@ -74,6 +78,44 @@ export class CourseDetailsComponent implements OnInit {
 
         this.loadCourse(courseId);
         this.loadAssignments(courseId, 1);
+      },
+    });
+  }
+
+  toggleArchiveStatus(): void {
+    const course = this.course();
+
+    if (!course || !this.isAdmin()) {
+      return;
+    }
+
+    this.archiveActionError.set('');
+    this.archiveActionSuccess.set('');
+    this.isArchiveActionLoading.set(true);
+
+    const request$ = course.isActive
+      ? this.coursesService.archiveCourse(course.id)
+      : this.coursesService.restoreCourse(course.id);
+
+    request$.subscribe({
+      next: () => {
+        const updatedCourse = {
+          ...course,
+          isActive: !course.isActive,
+        };
+
+        this.course.set(updatedCourse);
+        this.isArchiveActionLoading.set(false);
+        this.archiveActionSuccess.set(
+          course.isActive ? 'Курс отправлен в архив' : 'Курс восстановлен из архива',
+        );
+      },
+      error: (err) => {
+        console.error(err);
+        this.isArchiveActionLoading.set(false);
+        this.archiveActionError.set(
+          course.isActive ? 'Не удалось отправить курс в архив' : 'Не удалось восстановить курс',
+        );
       },
     });
   }

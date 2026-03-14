@@ -2,7 +2,31 @@
   <div *ngIf="loadError()" class="error-banner">
     {{ loadError() }}
   </div>
-   <button type="button" class="back-btn" (click)="back()">← Назад к курсам</button>
+  <div class="course-topbar">
+    <div class="course-topbar__left">
+      <button type="button" class="back-btn" (click)="back()">← Назад к курсам</button>
+    </div>
+
+    <div class="course-topbar__right">
+      <button
+        *ngIf="isAdmin() && course()"
+        type="button"
+        class="archive-btn"
+        (click)="toggleArchiveStatus()"
+        [disabled]="isArchiveActionLoading()"
+      >
+        {{
+          isArchiveActionLoading()
+            ? course()?.isActive
+              ? 'Архивация...'
+              : 'Восстановление...'
+            : course()?.isActive
+              ? 'В архив'
+              : 'Восстановить'
+        }}
+      </button>
+    </div>
+  </div>
 
   <ng-container *ngIf="course() as currentCourse">
     <app-course-banner

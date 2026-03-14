@@ -43,7 +43,11 @@
       <h2 class="courses-section__title">Неактивные курсы</h2>
 
       <div class="courses-grid">
-        <article class="course-card course-card--inactive" *ngFor="let course of inactiveCourses()">
+        <article
+          class="course-card course-card--inactive"
+          *ngFor="let course of inactiveCourses()"
+          [routerLink]="['/courses', course.id]"
+        >
           <div class="course-card__top">
             <div class="course-card__status course-card__status--inactive">
               {{ course.code }}

@@ -77,8 +77,27 @@
   border-color: #fecaca;
 }
 
-.back-btn,
-.primary-btn {
+.course-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+}
+
+.course-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.course-topbar__left,
+.course-topbar__right {
+  display: flex;
+  align-items: center;
+}
+
+.archive-btn,
+.back-btn {
   height: 42px;
   padding: 0 18px;
   border: none;
@@ -92,11 +111,38 @@
     opacity 0.18s ease;
 }
 
+.archive-btn {
+  background: linear-gradient(135deg, #475569 0%, #64748b 100%);
+  color: white;
+  box-shadow: 0 10px 28px rgba(71, 85, 105, 0.18);
+}
+
+.archive-btn:hover {
+  transform: translateY(-1px);
+}
+
 .back-btn {
   background: rgba(255, 255, 255, 0.92);
   color: #005cbb;
   box-shadow: 0 8px 24px rgba(0, 92, 187, 0.08);
-  margin-bottom: 18px;
+}
+
+.back-btn:hover {
+  transform: translateY(-1px);
+}
+
+.archive-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.success-banner {
+  margin-bottom: 20px;
+  border-radius: 20px;
+  padding: 16px 18px;
+  color: #166534;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
 }
 
 .add-assignment-btn {
