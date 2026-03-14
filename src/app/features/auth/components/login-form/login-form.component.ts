@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Router } from '@angular/router';
-import { of, switchMap, tap, finalize } from 'rxjs';
+import { of, switchMap, tap, finalize, catchError, EMPTY } from 'rxjs';
 
 import { LoginRequest } from '../../../../core/models/auth';
 import { AuthService } from '../../services/auth.service';
@@ -114,31 +114,29 @@ export class LoginFormComponent {
       .pipe(
         switchMap(() => this.userService.getMyRole()),
         tap((roleResponse) => {
+          if (roleResponse.role === 'Student') {
+            this.authService.logout();
+            throw new Error('STUDENT_FORBIDDEN');
+          }
+
           localStorage.setItem('user_role', roleResponse.role);
-        }),
-        switchMap((roleResponse) => {
-          if (roleResponse.role === 'Admin') {
-            return this.coursesService.getCourses();
-          }
-
-          if (roleResponse.role === 'Teacher') {
-            return this.coursesService.getMyCourses();
-          }
-
-          return of(null);
         }),
         finalize(() => {
           this.isSubmitting.set(false);
         }),
-      )
-      .subscribe({
-        next: () => {
-          this.router.navigate(['/users']);
-        },
-        error: (err) => {
+        catchError((err) => {
+          if (err.message === 'STUDENT_FORBIDDEN') {
+            this.submitError.set('Вход для студентов запрещён');
+            return EMPTY;
+          }
+
           console.error(err);
           this.submitError.set('Не удалось выполнить вход');
-        },
+          return EMPTY;
+        }),
+      )
+      .subscribe(() => {
+        this.router.navigate(['/courses']);
       });
   }
 }

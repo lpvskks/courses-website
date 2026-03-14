@@ -26,4 +26,17 @@ export const routes: Routes = [
         (m) => m.CourseAssignmentDetailsComponent,
       ),
   },
+
+  {
+  path: 'courses/:courseId/assignments/:assignmentId/solutions',
+  loadComponent: () =>
+    import('./features/assignments/pages/assignment-solutions-page/assignment-solutions-page.component')
+      .then((m) => m.AssignmentSolutionsPageComponent),
+},
+{
+  path: 'courses/:courseId/assignments/:assignmentId/solutions/:submissionId',
+  loadComponent: () =>
+    import('./features/assignments/pages/assignment-submission-details/assignment-submission-details.component')
+      .then((m) => m.AssignmentSubmissionDetailsComponent),
+},
 ];

@@ -2,6 +2,7 @@
   <div *ngIf="loadError()" class="error-banner">
     {{ loadError() }}
   </div>
+   <button type="button" class="back-btn" (click)="back()">← Назад к курсам</button>
 
   <ng-container *ngIf="course() as currentCourse">
     <app-course-banner

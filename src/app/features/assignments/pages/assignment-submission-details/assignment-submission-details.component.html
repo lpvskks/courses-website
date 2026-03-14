@@ -1,0 +1,95 @@
+<section class="submission-details-page">
+  <div class="submission-details-page__topbar">
+    <button type="button" class="back-btn" (click)="back()">← Назад к списку решений</button>
+  </div>
+
+  <ng-container *ngIf="submission() as currentSubmission">
+    <section class="submission-hero">
+      <div>
+        <h1 class="submission-hero__title">{{ getStudentFullName() }}</h1>
+        <p class="submission-hero__subtitle">
+          Работа отправлена {{ currentSubmission.created | date: 'dd.MM.yyyy HH:mm' }}
+        </p>
+      </div>
+
+      <div class="submission-hero__meta">
+        <div class="meta-card">
+          <span class="meta-card__label">Статус</span>
+          <span class="meta-card__value">
+            {{ getStatusLabel(currentSubmission.status) }}
+          </span>
+        </div>
+
+        <div class="meta-card">
+          <span class="meta-card__label">Оценка</span>
+          <span class="meta-card__value">{{ currentSubmission.grade }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section *ngIf="canGradeSubmission()" class="submission-grade-card">
+      <div class="section-header">
+        <h2 class="section-title">Выставить оценку</h2>
+      </div>
+
+      <div class="grade-selector">
+        <button
+          type="button"
+          class="grade-chip"
+          *ngFor="let grade of grades(); trackBy: trackByGrade"
+          [class.grade-chip--active]="selectedGrade() === grade"
+          (click)="selectGrade(grade)"
+        >
+          {{ grade }}
+        </button>
+      </div>
+
+      <div *ngIf="gradeError()" class="banner banner--error banner--compact">
+        {{ gradeError() }}
+      </div>
+
+      <div *ngIf="gradeSuccess()" class="banner banner--success banner--compact">
+        {{ gradeSuccess() }}
+      </div>
+
+      <div class="submission-grade-card__actions">
+        <button
+          type="button"
+          class="primary-btn"
+          (click)="saveGrade()"
+          [disabled]="isSavingGrade() || selectedGrade() === null"
+        >
+          {{ isSavingGrade() ? 'Сохранение...' : 'Сохранить' }}
+        </button>
+      </div>
+    </section>
+
+    <section class="submission-files-card">
+      <div class="section-header">
+        <h2 class="section-title">Файлы решения</h2>
+        <span class="section-count">{{ currentSubmission.files.length }}</span>
+      </div>
+
+      <div *ngIf="currentSubmission.files.length; else emptyFiles" class="files-list">
+        <a
+          *ngFor="let file of currentSubmission.files; trackBy: trackByFileId"
+          class="file-card"
+          [href]="file.url"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <div class="file-card__icon">📎</div>
+
+          <div class="file-card__content">
+            <div class="file-card__name">{{ file.fileName }}</div>
+            <div class="file-card__meta">{{ file.mimeType }} • {{ formatFileSize(file.size) }}</div>
+          </div>
+        </a>
+      </div>
+
+      <ng-template #emptyFiles>
+        <div class="empty-card">Файлы решения не прикреплены.</div>
+      </ng-template>
+    </section>
+  </ng-container>
+</section>

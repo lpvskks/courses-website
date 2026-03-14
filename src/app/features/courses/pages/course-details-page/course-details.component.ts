@@ -78,6 +78,10 @@ export class CourseDetailsComponent implements OnInit {
     });
   }
 
+  back(): void {
+    this.router.navigate(['/courses']);
+  }
+
   loadCourse(courseId: string): void {
     this.isCourseLoading.set(true);
     this.loadError.set('');

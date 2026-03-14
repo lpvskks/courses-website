@@ -1,0 +1,61 @@
+<section class="assignment-solutions-page">
+  <div class="assignment-solutions-page__topbar">
+    <button type="button" class="back-btn" (click)="back()">← Назад к заданию</button>
+  </div>
+
+  <section class="assignment-solutions-hero">
+    <div>
+      <h1 class="assignment-solutions-hero__title">Решения</h1>
+      <p class="assignment-solutions-hero__subtitle">
+        Список отправленных работ по заданию
+      </p>
+    </div>
+  </section>
+
+  <div *ngIf="loadError()" class="banner banner--error">
+    {{ loadError() }}
+  </div>
+
+  <ng-container *ngIf="!isLoading()">
+    <div *ngIf="!sortedSubmissions().length" class="empty-card">
+      Пока никто не отправил решение.
+    </div>
+
+    <section *ngIf="sortedSubmissions().length" class="solutions-card">
+
+      <div class="solutions-list">
+        <article
+          class="solution-row"
+          *ngFor="let submission of sortedSubmissions(); trackBy: trackBySubmissionId"
+          (click)="openSubmission(submission)"
+        >
+          <div class="solution-row__main">
+            <div class="solution-row__avatar">
+              {{ submission.firstName[0] }}{{ submission.lastName[0] }}
+            </div>
+
+            <div class="solution-row__info">
+              <h3 class="solution-row__name">
+                {{ getStudentFullName(submission) }}
+              </h3>
+
+              <p class="solution-row__meta">
+                {{ submission.created | date: 'dd.MM.yyyy HH:mm' }}
+              </p>
+            </div>
+          </div>
+
+          <div class="solution-row__side">
+            <span
+              class="status-badge"
+              [class.status-badge--reviewed]="submission.status === 'Reviewed'"
+              [class.status-badge--returned]="submission.status === 'Returned'"
+            >
+              {{ getStatusLabel(submission.status) }}
+            </span>
+          </div>
+        </article>
+      </div>
+    </section>
+  </ng-container>
+</section>

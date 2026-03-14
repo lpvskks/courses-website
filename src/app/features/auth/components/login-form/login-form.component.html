@@ -27,11 +27,10 @@
     {{ passwordError() }}
   </div>
 
-  <button
-    mat-flat-button
-    class="login-button"
-    (click)="onLogin()"
-  >
-    Войти
-  </button>
+  <button mat-flat-button class="login-button" (click)="onLogin()">Войти</button>
+
+  <div class="submit-error" *ngIf="submitError()">
+    <span class="error-icon">⚠</span>
+    <span>{{ submitError() }}</span>
+  </div>
 </div>

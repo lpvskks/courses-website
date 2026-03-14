@@ -1,9 +1,10 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
 
-import { Assignment } from '../../../core/models/assigment.model';
+import { Assignment, AssignmentSubmission } from '../../../core/models/assigment.model';
 import { AssignmentComment } from '../../../core/models/assignment-comment.model';
+import { MOCK_ASSIGNMENT_SUBMISSIONS } from '../mocks/assignment-submissions.mock';
 
 @Injectable({
   providedIn: 'root',
@@ -11,6 +12,7 @@ import { AssignmentComment } from '../../../core/models/assignment-comment.model
 export class AssignmentsService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = 'https://localhost:7226/api/assignments';
+  private readonly url = 'https://localhost:7226/assignments';
 
   getAssignmentById(assignmentId: string): Observable<Assignment> {
     return this.http.get<Assignment>(`${this.baseUrl}/${assignmentId}`);
@@ -42,5 +44,43 @@ export class AssignmentsService {
     });
 
     return this.http.post<void>(`${this.baseUrl}/${assignmentId}/files`, formData);
+  }
+  getAssignmentSubmissions(assignmentId: string) {
+    const useMock = true;
+
+    if (useMock) {
+      return of(
+        MOCK_ASSIGNMENT_SUBMISSIONS.map((item) => ({
+          ...item,
+          assignmentId,
+        })),
+      );
+    }
+
+    return this.http.get<AssignmentSubmission[]>(`${this.baseUrl}/${assignmentId}/submissions`);
+  }
+
+  getAssignmentSubmissionById(assignmentId: string, submissionId: string) {
+    const useMock = true;
+
+    if (useMock) {
+      const item = MOCK_ASSIGNMENT_SUBMISSIONS.find((x) => x.id === submissionId);
+
+      return of({
+        ...item!,
+        assignmentId,
+      });
+    }
+
+    return this.http.get<AssignmentSubmission>(
+      `${this.baseUrl}/${assignmentId}/submissions/${submissionId}`,
+    );
+  }
+
+  updateSubmissionGrade(submissionId: string, payload: { value: number }) {
+    return this.http.put<void>(
+      `https://localhost:7226/api/submissions/${submissionId}/grade`,
+      payload,
+    );
   }
 }
