@@ -8,18 +8,10 @@ import {
   signal,
   computed,
 } from '@angular/core';
-import {
-  FormBuilder,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
 
-import {
-  Course,
-  CoursesService,
-  UpdateCourseRequest,
-} from '../../services/courses.service';
+import { Course, CoursesService, UpdateCourseRequest } from '../../services/courses.service';
 
 @Component({
   selector: 'app-create-course-modal',
@@ -42,6 +34,8 @@ export class CreateCourseModalComponent {
   form = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(120)]],
     description: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(1000)]],
+    registrationStartsAtUtc: ['', [Validators.required]],
+    registrationEndsAtUtc: ['', [Validators.required]],
   });
 
   readonly nameError = computed(() => {
@@ -88,6 +82,38 @@ export class CreateCourseModalComponent {
     return '';
   });
 
+  readonly registrationStartsAtError = computed(() => {
+    const control = this.form.controls.registrationStartsAtUtc;
+
+    if (!control.touched && !control.dirty) {
+      return '';
+    }
+
+    if (control.hasError('required')) {
+      return 'Укажите дату начала регистрации';
+    }
+
+    return '';
+  });
+
+  readonly registrationEndsAtError = computed(() => {
+    const control = this.form.controls.registrationEndsAtUtc;
+
+    if (!control.touched && !control.dirty) {
+      return '';
+    }
+
+    if (control.hasError('required')) {
+      return 'Укажите дату конца регистрации';
+    }
+
+    if (!this.areRegistrationDatesInOrder()) {
+      return 'Дата конца регистрации должна быть позже даты начала';
+    }
+
+    return '';
+  });
+
   close(): void {
     if (this.isSaving()) {
       return;
@@ -109,7 +135,7 @@ export class CreateCourseModalComponent {
   save(): void {
     this.submitError.set(null);
 
-    if (this.form.invalid) {
+    if (this.form.invalid || !this.areRegistrationDatesInOrder()) {
       this.form.markAllAsTouched();
       return;
     }
@@ -117,6 +143,8 @@ export class CreateCourseModalComponent {
     const request: UpdateCourseRequest = {
       name: this.form.controls.name.value.trim(),
       description: this.form.controls.description.value.trim(),
+      registrationStartsAtUtc: this.toUtcIso(this.form.controls.registrationStartsAtUtc.value),
+      registrationEndsAtUtc: this.toUtcIso(this.form.controls.registrationEndsAtUtc.value),
     };
 
     this.isSaving.set(true);
@@ -133,5 +161,20 @@ export class CreateCourseModalComponent {
           this.submitError.set('Не удалось создать курс. Попробуйте еще раз.');
         },
       });
+  }
+
+  private areRegistrationDatesInOrder(): boolean {
+    const startsAt = this.form.controls.registrationStartsAtUtc.value;
+    const endsAt = this.form.controls.registrationEndsAtUtc.value;
+
+    if (!startsAt || !endsAt) {
+      return true;
+    }
+
+    return new Date(endsAt).getTime() > new Date(startsAt).getTime();
+  }
+
+  private toUtcIso(value: string): string {
+    return new Date(value).toISOString();
   }
 }

@@ -35,6 +35,25 @@
           <p class="course-card__description">
             {{ course.description }}
           </p>
+
+          <div
+            class="course-card__registration"
+            *ngIf="course.registrationStartsAtUtc || course.registrationEndsAtUtc"
+          >
+            <div class="course-card__registration-row" *ngIf="course.registrationStartsAtUtc">
+              <span class="course-card__registration-label">Дата начала регистрации</span>
+              <span class="course-card__registration-value">
+                {{ course.registrationStartsAtUtc | date: 'dd.MM.yyyy HH:mm' }}
+              </span>
+            </div>
+
+            <div class="course-card__registration-row" *ngIf="course.registrationEndsAtUtc">
+              <span class="course-card__registration-label">Дата конца регистрации</span>
+              <span class="course-card__registration-value">
+                {{ course.registrationEndsAtUtc | date: 'dd.MM.yyyy HH:mm' }}
+              </span>
+            </div>
+          </div>
         </article>
       </div>
     </div>
@@ -59,6 +78,25 @@
           <p class="course-card__description">
             {{ course.description }}
           </p>
+
+          <div
+            class="course-card__registration"
+            *ngIf="course.registrationStartsAtUtc || course.registrationEndsAtUtc"
+          >
+            <div class="course-card__registration-row" *ngIf="course.registrationStartsAtUtc">
+              <span class="course-card__registration-label">Дата начала регистрации</span>
+              <span class="course-card__registration-value">
+                {{ course.registrationStartsAtUtc | date: 'dd.MM.yyyy HH:mm' }}
+              </span>
+            </div>
+
+            <div class="course-card__registration-row" *ngIf="course.registrationEndsAtUtc">
+              <span class="course-card__registration-label">Дата конца регистрации</span>
+              <span class="course-card__registration-value">
+                {{ course.registrationEndsAtUtc | date: 'dd.MM.yyyy HH:mm' }}
+              </span>
+            </div>
+          </div>
         </article>
       </div>
     </div>

@@ -5,12 +5,11 @@
   tabindex="0"
 >
   <section class="course-modal">
-
     <div class="course-modal__header">
       <div>
         <h2 class="course-modal__title">Создание курса</h2>
         <p class="course-modal__subtitle">
-          Заполните основную информацию о новом учебном курсе
+          Заполните основную информацию и сроки регистрации на курс
         </p>
       </div>
 
@@ -31,7 +30,6 @@
 
     <form class="course-form" [formGroup]="form" (ngSubmit)="save()">
       <section class="form-card">
-
         <div class="form-grid">
           <div class="field field--full">
             <label class="field__label" for="course-name">Название курса</label>
@@ -40,9 +38,39 @@
               class="field__control"
               type="text"
               formControlName="name"
-              placeholder="Например: Основы лепки из глины"
+              placeholder="Например: Основы веб-разработки"
             />
             <div *ngIf="nameError()" class="field__error">{{ nameError() }}</div>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="registration-starts-at">
+              Дата начала регистрации
+            </label>
+            <input
+              id="registration-starts-at"
+              class="field__control"
+              type="datetime-local"
+              formControlName="registrationStartsAtUtc"
+            />
+            <div *ngIf="registrationStartsAtError()" class="field__error">
+              {{ registrationStartsAtError() }}
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="registration-ends-at">
+              Дата конца регистрации
+            </label>
+            <input
+              id="registration-ends-at"
+              class="field__control"
+              type="datetime-local"
+              formControlName="registrationEndsAtUtc"
+            />
+            <div *ngIf="registrationEndsAtError()" class="field__error">
+              {{ registrationEndsAtError() }}
+            </div>
           </div>
 
           <div class="field field--full">
@@ -62,20 +90,11 @@
       </section>
 
       <div class="course-modal__actions">
-        <button
-          type="button"
-          class="secondary-btn"
-          (click)="close()"
-          [disabled]="isSaving()"
-        >
+        <button type="button" class="secondary-btn" (click)="close()" [disabled]="isSaving()">
           Отмена
         </button>
 
-        <button
-          type="submit"
-          class="primary-btn"
-          [disabled]="isSaving()"
-        >
+        <button type="submit" class="primary-btn" [disabled]="isSaving()">
           {{ isSaving() ? 'Создание...' : 'Создать курс' }}
         </button>
       </div>

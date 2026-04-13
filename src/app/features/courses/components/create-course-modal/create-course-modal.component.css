@@ -14,8 +14,9 @@
 }
 
 .course-modal {
-  width: min(640px, 100%);
+  width: min(680px, 100%);
   max-height: calc(100vh - 40px);
+  overflow-y: auto;
 
   border-radius: 20px;
   padding: 20px;
@@ -25,11 +26,9 @@
   border: 1px solid #dbeafe;
 
   box-shadow:
-    0 12px 28px rgba(0, 92, 187, 0.10),
+    0 12px 28px rgba(0, 92, 187, 0.1),
     0 4px 10px rgba(15, 23, 42, 0.05);
 }
-
-/* HEADER */
 
 .course-modal__header {
   display: flex;
@@ -54,8 +53,6 @@
   color: #64748b;
 }
 
-/* FORM */
-
 .course-form {
   display: flex;
   flex-direction: column;
@@ -71,38 +68,11 @@
   border: 1px solid #dbeafe;
 }
 
-/* SECTION HEADER */
-
-.form-section__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  margin-bottom: 12px;
-}
-
-.form-section__title {
-  margin: 0;
-
-  font-size: 16px;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.form-section__hint {
-  font-size: 12px;
-  color: #64748b;
-}
-
-/* GRID */
-
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
-
-/* FIELD */
 
 .field {
   display: flex;
@@ -123,6 +93,7 @@
 .field__control {
   width: 100%;
   min-height: 40px;
+  box-sizing: border-box;
 
   padding: 8px 10px;
 
@@ -158,8 +129,6 @@
   color: #b91c1c;
 }
 
-/* ERROR BANNER */
-
 .banner {
   border-radius: 12px;
   padding: 10px 12px;
@@ -173,8 +142,6 @@
   font-size: 13px;
 }
 
-/* ACTIONS */
-
 .course-modal__actions {
   display: flex;
   justify-content: flex-end;
@@ -182,8 +149,6 @@
 
   margin-top: 6px;
 }
-
-/* BUTTONS */
 
 .primary-btn,
 .secondary-btn {
@@ -223,7 +188,12 @@
   background: #f8fbff;
 }
 
-/* CLOSE BUTTON */
+.primary-btn:disabled,
+.secondary-btn:disabled,
+.icon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
 
 .icon-btn {
   width: 34px;
@@ -246,8 +216,6 @@
   background: #f8fafc;
 }
 
-/* MOBILE */
-
 @media (max-width: 720px) {
   .course-modal-overlay {
     padding: 12px;
@@ -256,6 +224,10 @@
   .course-modal {
     width: 100%;
     padding: 16px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
   }
 
   .course-modal__actions {

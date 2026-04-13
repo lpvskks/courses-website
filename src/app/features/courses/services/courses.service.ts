@@ -9,11 +9,15 @@ export interface Course {
   description: string;
   code: string;
   isActive: boolean;
+  registrationStartsAtUtc?: string | null;
+  registrationEndsAtUtc?: string | null;
 }
 
 export interface UpdateCourseRequest {
   name: string;
   description: string;
+  registrationStartsAtUtc?: string;
+  registrationEndsAtUtc?: string;
 }
 
 @Injectable({
