@@ -1,15 +1,15 @@
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Router } from '@angular/router';
-import { of, switchMap, tap, finalize, catchError, EMPTY } from 'rxjs';
+import { switchMap, tap, finalize, catchError, EMPTY } from 'rxjs';
 
-import { LoginRequest } from '../../../../core/models/auth';
-import { AuthService } from '../../services/auth.service';
+import { LoginRequest, RegistrationRequest } from '../../../../core/models/auth';
 import { UserService } from '../../../../core/services/user.service';
-import { CoursesService } from '../../../courses/services/courses.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-login-form',
@@ -20,23 +20,31 @@ import { CoursesService } from '../../../courses/services/courses.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LoginFormComponent {
-  constructor(private readonly authService: AuthService) {}
-
   private readonly router = inject(Router);
   private readonly userService = inject(UserService);
-  private readonly coursesService = inject(CoursesService);
+  private readonly nameRegex = /^[A-ZА-ЯЁ][a-zа-яё]+$/;
+
+  constructor(private readonly authService: AuthService) {}
 
   email = signal('');
   password = signal('');
+  firstName = signal('');
+  lastName = signal('');
+  middleName = signal('');
 
   emailError = signal('');
   passwordError = signal('');
+  firstNameError = signal('');
+  lastNameError = signal('');
+  middleNameError = signal('');
   submitError = signal('');
+  submitSuccess = signal('');
   isSubmitting = signal(false);
+  isRegisterMode = signal(false);
 
   onEmailChange(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.email.set(value);
+    this.email.set((event.target as HTMLInputElement).value);
+    this.clearSubmitMessages();
 
     if (this.emailError()) {
       this.validateAndSetErrors();
@@ -44,36 +52,158 @@ export class LoginFormComponent {
   }
 
   onPasswordChange(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.password.set(value);
+    this.password.set((event.target as HTMLInputElement).value);
+    this.clearSubmitMessages();
 
     if (this.passwordError()) {
       this.validateAndSetErrors();
     }
   }
 
+  onFirstNameChange(event: Event): void {
+    this.firstName.set((event.target as HTMLInputElement).value);
+    this.clearSubmitMessages();
+
+    if (this.firstNameError()) {
+      this.validateAndSetErrors();
+    }
+  }
+
+  onLastNameChange(event: Event): void {
+    this.lastName.set((event.target as HTMLInputElement).value);
+    this.clearSubmitMessages();
+
+    if (this.lastNameError()) {
+      this.validateAndSetErrors();
+    }
+  }
+
+  onMiddleNameChange(event: Event): void {
+    this.middleName.set((event.target as HTMLInputElement).value);
+    this.clearSubmitMessages();
+
+    if (this.middleNameError()) {
+      this.validateAndSetErrors();
+    }
+  }
+
+  showRegisterForm(): void {
+    this.isRegisterMode.set(true);
+    this.clearMessagesAndErrors();
+  }
+
+  showLoginForm(): void {
+    this.isRegisterMode.set(false);
+    this.clearMessagesAndErrors();
+  }
+
   isFormValid(): boolean {
-    const email = this.email();
-    const password = this.password();
+    if (this.isRegisterMode()) {
+      return this.isRegisterFormValid();
+    }
 
-    if (!email || !password) return false;
+    return this.isLoginFormValid();
+  }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  buildRequest(): LoginRequest {
+    return {
+      email: this.email().trim(),
+      password: this.password(),
+    };
+  }
 
-    if (!emailRegex.test(email)) return false;
+  buildRegistrationRequest(): RegistrationRequest {
+    return {
+      firstName: this.firstName().trim(),
+      lastName: this.lastName().trim(),
+      middleName: this.middleName().trim(),
+      email: this.email().trim(),
+      password: this.password(),
+    };
+  }
 
-    if (password.length < 8) return false;
+  onLogin(): void {
+    this.submitError.set('');
+    this.submitSuccess.set('');
 
-    return true;
+    if (!this.validateAndSetErrors()) {
+      return;
+    }
+
+    this.isSubmitting.set(true);
+
+    this.authService
+      .login(this.buildRequest())
+      .pipe(
+        switchMap(() => this.userService.getMyRole()),
+        tap((roleResponse) => {
+          if (roleResponse.role === 'Student') {
+            this.authService.logout();
+            throw new Error('STUDENT_FORBIDDEN');
+          }
+
+          localStorage.setItem('user_role', roleResponse.role);
+        }),
+        finalize(() => {
+          this.isSubmitting.set(false);
+        }),
+        catchError((err) => {
+          if (err.message === 'STUDENT_FORBIDDEN') {
+            this.submitError.set('Вход для студентов запрещен');
+            return EMPTY;
+          }
+
+          console.error(err);
+          this.submitError.set('Не удалось выполнить вход');
+          return EMPTY;
+        }),
+      )
+      .subscribe(() => {
+        this.router.navigate(['/courses']);
+      });
+  }
+
+  onRegister(): void {
+    this.submitError.set('');
+    this.submitSuccess.set('');
+
+    if (!this.validateAndSetErrors()) {
+      return;
+    }
+
+    this.isSubmitting.set(true);
+
+    this.authService
+      .register(this.buildRegistrationRequest())
+      .pipe(
+        finalize(() => {
+          this.isSubmitting.set(false);
+        }),
+        catchError((err) => {
+          console.error(err);
+          this.submitError.set(this.getRegistrationErrorMessage(err));
+          return EMPTY;
+        }),
+      )
+      .subscribe((_userId) => {
+        this.submitSuccess.set('Регистрация прошла успешно. Теперь можно войти');
+        this.isRegisterMode.set(false);
+        this.password.set('');
+        this.clearErrors();
+      });
   }
 
   private validateAndSetErrors(): boolean {
-    const email = this.email();
+    this.clearErrors();
+
+    if (this.isRegisterMode()) {
+      this.firstNameError.set(this.getNameError(this.firstName(), 'имя'));
+      this.lastNameError.set(this.getNameError(this.lastName(), 'фамилию'));
+      this.middleNameError.set(this.getNameError(this.middleName(), 'отчество'));
+    }
+
+    const email = this.email().trim();
     const password = this.password();
-
-    this.emailError.set('');
-    this.passwordError.set('');
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!email) {
@@ -91,52 +221,86 @@ export class LoginFormComponent {
     return this.isFormValid();
   }
 
-  buildRequest(): LoginRequest {
-    return {
-      email: this.email(),
-      password: this.password(),
-    };
+  private isLoginFormValid(): boolean {
+    const email = this.email().trim();
+    const password = this.password();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    return emailRegex.test(email) && password.length >= 8;
   }
 
-  onLogin(): void {
-    this.submitError.set('');
+  private isRegisterFormValid(): boolean {
+    return (
+      this.isNameValid(this.firstName()) &&
+      this.isNameValid(this.lastName()) &&
+      this.isNameValid(this.middleName()) &&
+      this.isLoginFormValid()
+    );
+  }
 
-    if (!this.validateAndSetErrors()) {
-      return;
+  private isNameValid(value: string): boolean {
+    const trimmedValue = value.trim();
+    return trimmedValue.length <= 50 && this.nameRegex.test(trimmedValue);
+  }
+
+  private getNameError(value: string, fieldName: string): string {
+    const trimmedValue = value.trim();
+
+    if (!trimmedValue) {
+      return `Введите ${fieldName}`;
     }
 
-    const request = this.buildRequest();
+    if (trimmedValue.length > 50) {
+      return 'Максимум 50 символов';
+    }
 
-    this.isSubmitting.set(true);
+    if (!this.nameRegex.test(trimmedValue)) {
+      return 'Только буквы, первая буква заглавная';
+    }
 
-    this.authService
-      .login(request)
-      .pipe(
-        switchMap(() => this.userService.getMyRole()),
-        tap((roleResponse) => {
-          if (roleResponse.role === 'Student') {
-            this.authService.logout();
-            throw new Error('STUDENT_FORBIDDEN');
-          }
+    return '';
+  }
 
-          localStorage.setItem('user_role', roleResponse.role);
-        }),
-        finalize(() => {
-          this.isSubmitting.set(false);
-        }),
-        catchError((err) => {
-          if (err.message === 'STUDENT_FORBIDDEN') {
-            this.submitError.set('Вход для студентов запрещён');
-            return EMPTY;
-          }
+  private clearMessagesAndErrors(): void {
+    this.clearSubmitMessages();
+    this.clearErrors();
+  }
 
-          console.error(err);
-          this.submitError.set('Не удалось выполнить вход');
-          return EMPTY;
-        }),
-      )
-      .subscribe(() => {
-        this.router.navigate(['/courses']);
-      });
+  private clearSubmitMessages(): void {
+    this.submitError.set('');
+    this.submitSuccess.set('');
+  }
+
+  private clearErrors(): void {
+    this.emailError.set('');
+    this.passwordError.set('');
+    this.firstNameError.set('');
+    this.lastNameError.set('');
+    this.middleNameError.set('');
+  }
+
+  private getRegistrationErrorMessage(err: unknown): string {
+    if (!(err instanceof HttpErrorResponse)) {
+      return 'Не удалось зарегистрироваться';
+    }
+
+    if (typeof err.error === 'string' && err.error.trim()) {
+      return err.error;
+    }
+
+    if (err.error?.title) {
+      return err.error.title;
+    }
+
+    if (err.error?.errors) {
+      const validationErrors = Object.values(err.error.errors).flat();
+      const firstError = validationErrors.find((error) => typeof error === 'string');
+
+      if (firstError) {
+        return firstError;
+      }
+    }
+
+    return 'Не удалось зарегистрироваться. Проверьте данные или попробуйте позже';
   }
 }
