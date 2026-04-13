@@ -9,7 +9,7 @@
       <div>
         <h2 class="assignment-modal__title">Новое задание</h2>
         <p class="assignment-modal__subtitle">
-          Создайте задание, укажите дедлайн и при необходимости прикрепите файлы
+          Заполните условия, сроки и параметры командной работы
         </p>
       </div>
 
@@ -34,7 +34,7 @@
           <h3 class="form-section__title">Основная информация</h3>
         </div>
 
-        <div class="form-grid">
+        <div class="form-grid form-grid--intro">
           <div class="field field--full">
             <label class="field__label" for="assignment-title">Название задания</label>
             <input
@@ -47,16 +47,116 @@
             <div *ngIf="titleError" class="field__error">{{ titleError }}</div>
           </div>
 
-          <div class="field field--full">
+          <div class="field field--description">
             <label class="field__label" for="assignment-text">Описание</label>
             <textarea
               id="assignment-text"
               class="field__control field__control--textarea"
               formControlName="text"
-              rows="8"
-              placeholder="Подробно опишите, что нужно сделать"
+              rows="4"
+              placeholder="Подробно опишите, что нужно сделать и как будет оцениваться работа"
             ></textarea>
             <div *ngIf="textError" class="field__error">{{ textError }}</div>
+          </div>
+
+          <div class="field field--files">
+            <label class="field__label">Файлы</label>
+            <label class="upload-square">
+              <input
+                type="file"
+                hidden
+                multiple
+                accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
+                (change)="onFilesSelected($event)"
+              />
+
+              <span class="upload-square__icon">↑</span>
+              <span class="upload-square__title">Выбрать файлы</span>
+              <span class="upload-square__subtitle">Документы, архивы, видео</span>
+            </label>
+
+            <div *ngIf="selectedFiles().length" class="files-list files-list--compact">
+              <article
+                class="file-chip"
+                *ngFor="let file of selectedFiles(); let i = index; trackBy: trackByFile"
+              >
+                <div class="file-chip__info">
+                  <div class="file-chip__name">{{ file.name }}</div>
+                  <div class="file-chip__meta">
+                    {{ file.type || 'Файл без mime-type' }} · {{ formatFileSize(file.size) }}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  class="file-chip__remove"
+                  (click)="removeFile(i)"
+                  [disabled]="isSaving()"
+                >
+                  Удалить
+                </button>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="form-card">
+        <div class="form-section__header">
+          <h3 class="form-section__title">Команды и сроки</h3>
+        </div>
+
+        <div class="form-grid form-grid--four">
+          <div class="field">
+            <label class="field__label" for="assignment-starts-at">Начало формирования</label>
+            <input
+              id="assignment-starts-at"
+              class="field__control"
+              type="datetime-local"
+              formControlName="startsAtUtc"
+            />
+            <div *ngIf="startsAtError" class="field__error">{{ startsAtError }}</div>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="team-formation-ends-at">
+              Срок формирования команды
+            </label>
+            <input
+              id="team-formation-ends-at"
+              class="field__control"
+              type="datetime-local"
+              formControlName="teamFormationEndsAtUtc"
+            />
+            <div *ngIf="teamFormationEndsAtError" class="field__error">
+              {{ teamFormationEndsAtError }}
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="min-team-size">Минимум в команде</label>
+            <input
+              id="min-team-size"
+              class="field__control"
+              type="number"
+              min="1"
+              max="100"
+              formControlName="minTeamSize"
+            />
+            <div *ngIf="minTeamSizeError" class="field__error">{{ minTeamSizeError }}</div>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="max-team-size">Максимум в команде</label>
+            <input
+              id="max-team-size"
+              class="field__control"
+              type="number"
+              min="1"
+              max="100"
+              formControlName="maxTeamSize"
+            />
+            <div *ngIf="maxTeamSizeError" class="field__error">{{ maxTeamSizeError }}</div>
           </div>
 
           <div class="field">
@@ -70,78 +170,67 @@
             <div *ngIf="deadlineError" class="field__error">{{ deadlineError }}</div>
           </div>
 
-          <div class="field field--checkbox">
-            <label class="checkbox-card">
-              <input type="checkbox" formControlName="requiresSubmission" />
-              <span>
-                <strong>Требуется сдача</strong>
-              </span>
+          <div class="field field--span-2">
+            <label class="field__label" for="team-formation-mode">Режим формирования команд</label>
+            <select
+              id="team-formation-mode"
+              class="field__control"
+              formControlName="teamFormationMode"
+            >
+              <option value="teacher_managed">Преподаватель распределяет</option>
+              <option value="student_self_selection">Студенты выбирают сами</option>
+              <option value="random_distribution">Случайное распределение</option>
+              <option value="captain_draft">Капитаны набирают участников</option>
+            </select>
+          </div>
+
+          <div class="field" *ngIf="showCaptainSelectionEndsAt()">
+            <label class="field__label" for="captain-selection-ends-at">
+              Срок выбора капитана
             </label>
+            <input
+              id="captain-selection-ends-at"
+              class="field__control"
+              type="datetime-local"
+              formControlName="captainSelectionEndsAtUtc"
+            />
+            <div *ngIf="captainSelectionEndsAtError" class="field__error">
+              {{ captainSelectionEndsAtError }}
+            </div>
           </div>
         </div>
       </section>
 
       <section class="form-card">
         <div class="form-section__header">
-          <h3 class="form-section__title">Файлы</h3>
-          <span class="form-section__hint">Изображения, документы, видео</span>
+          <h3 class="form-section__title">Публикация</h3>
         </div>
 
-        <label class="upload-zone">
-          <input
-            type="file"
-            hidden
-            multiple
-            accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
-            (change)="onFilesSelected($event)"
-          />
+        <div class="publication-row">
+          <label class="checkbox-card">
+            <input type="checkbox" formControlName="isVisible" />
+            <span>
+              <strong>Видно студентам</strong>
+              <small>Задание появится в курсе</small>
+            </span>
+          </label>
 
-          <div class="upload-zone__icon">↑</div>
-          <div class="upload-zone__title">Нажмите, чтобы выбрать файлы</div>
-          <div class="upload-zone__subtitle">
-            Можно загружать фото, документы и видео
-          </div>
-        </label>
-
-        <div *ngIf="selectedFiles().length" class="files-list">
-          <article
-            class="file-chip"
-            *ngFor="let file of selectedFiles(); let i = index; trackBy: trackByFile"
-          >
-            <div class="file-chip__info">
-              <div class="file-chip__name">{{ file.name }}</div>
-              <div class="file-chip__meta">
-                {{ file.type || 'Файл без mime-type' }} • {{ formatFileSize(file.size) }}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              class="file-chip__remove"
-              (click)="removeFile(i)"
-              [disabled]="isSaving()"
-            >
-              Удалить
-            </button>
-          </article>
+          <label class="checkbox-card">
+            <input type="checkbox" formControlName="requiresSubmission" />
+            <span>
+              <strong>Требуется сдача</strong>
+              <small>Студенты отправляют решение</small>
+            </span>
+          </label>
         </div>
       </section>
 
       <div class="assignment-modal__actions">
-        <button
-          type="button"
-          class="secondary-btn"
-          (click)="close()"
-          [disabled]="isSaving()"
-        >
+        <button type="button" class="secondary-btn" (click)="close()" [disabled]="isSaving()">
           Отмена
         </button>
 
-        <button
-          type="submit"
-          class="primary-btn"
-          [disabled]="isSaving()"
-        >
+        <button type="submit" class="primary-btn" [disabled]="isSaving()">
           {{ isSaving() ? 'Создание...' : 'Создать задание' }}
         </button>
       </div>

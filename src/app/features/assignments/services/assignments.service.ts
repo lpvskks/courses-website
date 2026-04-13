@@ -6,13 +6,27 @@ import { Assignment, AssignmentSubmission } from '../../../core/models/assigment
 import { AssignmentComment } from '../../../core/models/assignment-comment.model';
 import { MOCK_ASSIGNMENT_SUBMISSIONS } from '../mocks/assignment-submissions.mock';
 
+export interface CreateAssignmentRequest {
+  courseId: string;
+  title: string;
+  text: string;
+  startsAtUtc: string;
+  minTeamSize: number;
+  maxTeamSize: number;
+  teamFormationMode: string;
+  captainSelectionEndsAtUtc: string;
+  teamFormationEndsAtUtc: string;
+  isVisible: boolean;
+  requiresSubmission: boolean;
+  deadline: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
 export class AssignmentsService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = 'https://localhost:7226/api/assignments';
-  private readonly url = 'https://localhost:7226/assignments';
 
   getAssignmentById(assignmentId: string): Observable<Assignment> {
     return this.http.get<Assignment>(`${this.baseUrl}/${assignmentId}`);
@@ -26,13 +40,7 @@ export class AssignmentsService {
     return this.http.post<AssignmentComment>(`${this.baseUrl}/${assignmentId}/comments`, payload);
   }
 
-  createAssignment(payload: {
-    courseId: string;
-    title: string;
-    text: string;
-    requiresSubmission: boolean;
-    deadline: string;
-  }): Observable<Assignment> {
+  createAssignment(payload: CreateAssignmentRequest): Observable<Assignment> {
     return this.http.post<Assignment>(this.baseUrl, payload);
   }
 
@@ -45,6 +53,7 @@ export class AssignmentsService {
 
     return this.http.post<void>(`${this.baseUrl}/${assignmentId}/files`, formData);
   }
+
   getAssignmentSubmissions(assignmentId: string) {
     const useMock = true;
 

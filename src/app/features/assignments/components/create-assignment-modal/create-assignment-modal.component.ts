@@ -39,9 +39,20 @@ export class CreateAssignmentModalComponent {
   readonly form = this.fb.nonNullable.group({
     title: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(150)]],
     text: ['', [Validators.required, Validators.minLength(5), Validators.maxLength(5000)]],
+    startsAtUtc: ['', [Validators.required]],
+    minTeamSize: [1, [Validators.required, Validators.min(1), Validators.max(100)]],
+    maxTeamSize: [1, [Validators.required, Validators.min(1), Validators.max(100)]],
+    teamFormationMode: ['teacher_managed', [Validators.required]],
+    captainSelectionEndsAtUtc: [''],
+    teamFormationEndsAtUtc: ['', [Validators.required]],
+    isVisible: [true],
     requiresSubmission: [true],
     deadline: ['', [Validators.required]],
   });
+
+  showCaptainSelectionEndsAt(): boolean {
+    return this.form.controls.teamFormationMode.getRawValue() !== 'teacher_managed';
+  }
 
   close(): void {
     if (this.isSaving()) {
@@ -93,15 +104,14 @@ export class CreateAssignmentModalComponent {
     this.form.markAllAsTouched();
     this.submitError.set('');
 
-    if (!this.isAdmin() || this.form.invalid || !this.courseId) {
-      return;
-    }
-
-    const title = this.form.controls.title.getRawValue().trim();
-    const text = this.form.controls.text.getRawValue().trim();
-    const deadlineRaw = this.form.controls.deadline.getRawValue();
-
-    if (!title || !text || !deadlineRaw) {
+    if (
+      !this.isAdmin() ||
+      this.form.invalid ||
+      !this.courseId ||
+      !this.isCaptainSelectionDateFilled() ||
+      !this.areDatesValid() ||
+      !this.areTeamSizesValid()
+    ) {
       return;
     }
 
@@ -110,10 +120,19 @@ export class CreateAssignmentModalComponent {
     this.assignmentsService
       .createAssignment({
         courseId: this.courseId,
-        title,
-        text,
+        title: this.form.controls.title.getRawValue().trim(),
+        text: this.form.controls.text.getRawValue().trim(),
+        startsAtUtc: this.toUtcIso(this.form.controls.startsAtUtc.getRawValue()),
+        minTeamSize: this.form.controls.minTeamSize.getRawValue(),
+        maxTeamSize: this.form.controls.maxTeamSize.getRawValue(),
+        teamFormationMode: this.form.controls.teamFormationMode.getRawValue(),
+        captainSelectionEndsAtUtc: this.toUtcIso(this.getCaptainSelectionEndsAtValue()),
+        teamFormationEndsAtUtc: this.toUtcIso(
+          this.form.controls.teamFormationEndsAtUtc.getRawValue(),
+        ),
+        isVisible: this.form.controls.isVisible.getRawValue(),
         requiresSubmission: this.form.controls.requiresSubmission.getRawValue(),
-        deadline: new Date(deadlineRaw).toISOString(),
+        deadline: this.toUtcIso(this.form.controls.deadline.getRawValue()),
       })
       .subscribe({
         next: (createdAssignment) => {
@@ -168,15 +187,188 @@ export class CreateAssignmentModalComponent {
     const control = this.form.controls.text;
     if (!control.touched || !control.errors) return '';
     if (control.errors['required']) return 'Введите описание задания';
-    if (control.errors['minlength']) return 'Описание должно быть не менее 2 символов';
-    if (control.errors['maxlength']) return 'Описание должно быть не более 1000 символов';
+    if (control.errors['minlength']) return 'Описание должно быть не менее 5 символов';
+    if (control.errors['maxlength']) return 'Описание должно быть не более 5000 символов';
+    return '';
+  }
+
+  get startsAtError(): string {
+    const requiredError = this.getRequiredDateError('startsAtUtc', 'Выберите дату начала задания');
+
+    if (requiredError) return requiredError;
+
+    if (!this.isStartsAtValid()) {
+      return 'Начало задания должно быть раньше срока формирования команды';
+    }
+
+    return '';
+  }
+
+  get captainSelectionEndsAtError(): string {
+    if (!this.showCaptainSelectionEndsAt()) {
+      return '';
+    }
+
+    const control = this.form.controls.captainSelectionEndsAtUtc;
+
+    if (control.touched && !control.getRawValue()) {
+      return 'Выберите срок выбора капитана';
+    }
+
+    if (!this.isCaptainSelectionDateValid()) {
+      return 'Срок выбора капитана должен быть позже начала задания и раньше срока формирования команды';
+    }
+
+    return '';
+  }
+
+  get teamFormationEndsAtError(): string {
+    const requiredError = this.getRequiredDateError(
+      'teamFormationEndsAtUtc',
+      'Выберите срок формирования команды',
+    );
+
+    if (requiredError) return requiredError;
+
+    if (!this.isTeamFormationDateValid()) {
+      return this.showCaptainSelectionEndsAt()
+        ? 'Срок формирования команды должен быть позже срока выбора капитана'
+        : 'Срок формирования команды должен быть позже начала задания';
+    }
+
     return '';
   }
 
   get deadlineError(): string {
-    const control = this.form.controls.deadline;
-    if (!control.touched || !control.errors) return '';
-    if (control.errors['required']) return 'Выберите дедлайн';
+    const requiredError = this.getRequiredDateError('deadline', 'Выберите дедлайн');
+
+    if (requiredError) return requiredError;
+
+    if (!this.isDeadlineValid()) {
+      return 'Дедлайн должен быть позже срока формирования команды';
+    }
+
     return '';
   }
+
+  get minTeamSizeError(): string {
+    const control = this.form.controls.minTeamSize;
+    if (!control.touched || !control.errors) return '';
+    if (control.errors['required']) return 'Укажите минимальный размер команды';
+    if (control.errors['min']) return 'Минимум 1 участник';
+    if (control.errors['max']) return 'Не больше 100 участников';
+    return '';
+  }
+
+  get maxTeamSizeError(): string {
+    const control = this.form.controls.maxTeamSize;
+    if (!control.touched && this.areTeamSizesValid()) return '';
+
+    if (control.errors?.['required']) return 'Укажите максимальный размер команды';
+    if (control.errors?.['min']) return 'Минимум 1 участник';
+    if (control.errors?.['max']) return 'Не больше 100 участников';
+    if (!this.areTeamSizesValid()) return 'Максимум должен быть не меньше минимума';
+    return '';
+  }
+
+  private getRequiredDateError(
+    controlName: 'startsAtUtc' | 'teamFormationEndsAtUtc' | 'deadline',
+    message: string,
+  ): string {
+    const control = this.form.controls[controlName];
+    if (!control.touched || !control.errors) return '';
+    if (control.errors['required']) return message;
+    return '';
+  }
+
+  private areTeamSizesValid(): boolean {
+    return (
+      this.form.controls.maxTeamSize.getRawValue() >= this.form.controls.minTeamSize.getRawValue()
+    );
+  }
+
+  private areDatesValid(): boolean {
+    return (
+      this.isCaptainSelectionDateValid() &&
+      this.isTeamFormationDateValid() &&
+      this.isStartsAtValid() &&
+      this.isDeadlineValid()
+    );
+  }
+
+  private isCaptainSelectionDateValid(): boolean {
+    if (!this.showCaptainSelectionEndsAt()) {
+      return true;
+    }
+
+    return (
+      this.isAfter('captainSelectionEndsAtUtc', 'startsAtUtc') &&
+      this.isBefore('captainSelectionEndsAtUtc', 'teamFormationEndsAtUtc')
+    );
+  }
+
+  private isTeamFormationDateValid(): boolean {
+    const isAfterStart = this.isAfter('teamFormationEndsAtUtc', 'startsAtUtc');
+
+    if (!this.showCaptainSelectionEndsAt()) {
+      return isAfterStart;
+    }
+
+    return isAfterStart && this.isAfter('teamFormationEndsAtUtc', 'captainSelectionEndsAtUtc');
+  }
+
+  private isStartsAtValid(): boolean {
+    return this.isBefore('startsAtUtc', 'teamFormationEndsAtUtc');
+  }
+
+  private isDeadlineValid(): boolean {
+    return this.isAfter('deadline', 'teamFormationEndsAtUtc');
+  }
+
+  private isBefore(earlierControlName: DateControlName, laterControlName: DateControlName): boolean {
+    const earlier = this.form.controls[earlierControlName].getRawValue();
+    const later = this.form.controls[laterControlName].getRawValue();
+
+    if (!earlier || !later) {
+      return true;
+    }
+
+    return new Date(earlier).getTime() < new Date(later).getTime();
+  }
+
+  private isAfter(laterControlName: DateControlName, earlierControlName: DateControlName): boolean {
+    const later = this.form.controls[laterControlName].getRawValue();
+    const earlier = this.form.controls[earlierControlName].getRawValue();
+
+    if (!later || !earlier) {
+      return true;
+    }
+
+    return new Date(later).getTime() > new Date(earlier).getTime();
+  }
+
+  private toUtcIso(value: string): string {
+    return new Date(value).toISOString();
+  }
+
+  private isCaptainSelectionDateFilled(): boolean {
+    return (
+      !this.showCaptainSelectionEndsAt() ||
+      !!this.form.controls.captainSelectionEndsAtUtc.getRawValue()
+    );
+  }
+
+  private getCaptainSelectionEndsAtValue(): string {
+    if (this.showCaptainSelectionEndsAt()) {
+      return this.form.controls.captainSelectionEndsAtUtc.getRawValue();
+    }
+
+    return this.form.controls.startsAtUtc.getRawValue();
+  }
 }
+
+type DateControlName =
+  | 'captainSelectionEndsAtUtc'
+  | 'teamFormationEndsAtUtc'
+  | 'startsAtUtc'
+  | 'deadline';
