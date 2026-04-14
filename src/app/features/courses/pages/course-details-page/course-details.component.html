@@ -64,6 +64,7 @@
         <app-assignment-card
           *ngFor="let assignment of assignments()"
           [assignment]="assignment"
+          [isStudent]="isStudent()"
           (open)="openAssignment($event)"
         />
       </div>

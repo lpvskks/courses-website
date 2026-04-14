@@ -26,7 +26,7 @@ export interface CreateAssignmentRequest {
 })
 export class AssignmentsService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'https://localhost:7226/api/assignments';
+  private readonly baseUrl = 'http://111.88.155.34:5196/api/assignments';
 
   getAssignmentById(assignmentId: string): Observable<Assignment> {
     return this.http.get<Assignment>(`${this.baseUrl}/${assignmentId}`);
@@ -88,7 +88,7 @@ export class AssignmentsService {
 
   updateSubmissionGrade(submissionId: string, payload: { value: number }) {
     return this.http.put<void>(
-      `https://localhost:7226/api/submissions/${submissionId}/grade`,
+      `http://111.88.155.34:5196/api/submissions/${submissionId}/grade`,
       payload,
     );
   }

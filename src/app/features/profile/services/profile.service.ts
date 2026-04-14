@@ -9,7 +9,7 @@ import { UserProfileResponse, UpdateUserProfileRequest } from '../../../core/mod
 })
 export class ProfileService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'https://localhost:7226/api/users';
+  private readonly baseUrl = 'http://111.88.155.34:5196/api/users';
 
   getMe(): Observable<UserProfileResponse> {
     return this.http.get<UserProfileResponse>(`${this.baseUrl}/me`);

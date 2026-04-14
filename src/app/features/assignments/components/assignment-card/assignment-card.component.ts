@@ -13,9 +13,18 @@ import { Assignment } from '../../../../core/models/assigment.model';
 })
 export class AssignmentCardComponent {
   @Input({ required: true }) assignment!: Assignment;
+  @Input() isStudent = false;
   @Output() open = new EventEmitter<string>();
 
+  get isUnavailableForStudent(): boolean {
+    return this.isStudent && this.assignment.isClosed;
+  }
+
   onOpen(): void {
+    if (this.isUnavailableForStudent) {
+      return;
+    }
+
     this.open.emit(this.assignment.id);
   }
 }

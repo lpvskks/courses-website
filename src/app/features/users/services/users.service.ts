@@ -9,7 +9,7 @@ import { CourseUser } from "../../../core/models/course-user.model";
 
 export class UsersService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'https://localhost:7226/api/courses';
+  private readonly baseUrl = 'http://111.88.155.34:5196/api/courses';
 
   getCourseTeachers(courseId: string): Observable<CourseUser[]> {
     return this.http.get<CourseUser[]>(`${this.baseUrl}/${courseId}/teachers`);

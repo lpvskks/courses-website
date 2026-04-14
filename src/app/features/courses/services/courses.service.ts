@@ -25,7 +25,7 @@ export interface UpdateCourseRequest {
 })
 export class CoursesService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'https://localhost:7226/api/courses';
+  private readonly baseUrl = 'http://111.88.155.34:5196/api/courses';
 
   getCourses(): Observable<Course[]> {
     return this.http.get<Course[]>(this.baseUrl);
@@ -51,8 +51,11 @@ export class CoursesService {
     courseId: string,
     page: number,
     pageSize: number,
+    visibleOnly = false,
   ): Observable<AssignmentsResponse> {
-    return this.http.get<AssignmentsResponse>(`${this.baseUrl}/${courseId}/assignments`, {
+    const assignmentsUrl = `${this.baseUrl}/${courseId}/assignments${visibleOnly ? '/visible' : ''}`;
+
+    return this.http.get<AssignmentsResponse>(assignmentsUrl, {
       params: {
         page,
         pageSize,

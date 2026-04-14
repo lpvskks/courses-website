@@ -58,6 +58,7 @@ export class CourseDetailsComponent implements OnInit {
 
   readonly role = signal(localStorage.getItem('user_role'));
   readonly isAdmin = computed(() => this.role() === 'Admin');
+  readonly isStudent = computed(() => this.role() === 'Student');
 
   readonly form = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
@@ -149,9 +150,18 @@ export class CourseDetailsComponent implements OnInit {
   loadAssignments(courseId: string, page: number): void {
     this.isAssignmentsLoading.set(true);
 
-    this.coursesService.getCourseAssignments(courseId, page, this.pageSize()).subscribe({
+    this.coursesService.getCourseAssignments(
+      courseId,
+      page,
+      this.pageSize(),
+      this.isStudent(),
+    ).subscribe({
       next: (response) => {
-        this.assignments.set(response.items);
+        const assignments = this.isStudent()
+          ? response.items.filter((assignment) => assignment.isVisible)
+          : response.items;
+
+        this.assignments.set(assignments);
         this.currentPage.set(page);
         this.totalCount.set(response.totalCount);
         this.totalPages.set(Math.max(1, Math.ceil(response.totalCount / this.pageSize())));
