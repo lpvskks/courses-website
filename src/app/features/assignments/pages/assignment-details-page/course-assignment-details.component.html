@@ -292,6 +292,112 @@
       </div>
     </section>
 
+    <section class="teams-card" *ngIf="canManageRandomTeams(currentAssignment)">
+      <div class="section-header teams-card__header">
+        <div>
+          <h2 class="section-title">Команды задания</h2>
+          <p class="section-subtitle">
+            Капитаны выбираются студентами, а остальных студентов система распределяет случайно.
+          </p>
+        </div>
+
+        <div class="teams-card__actions">
+          <button
+            *ngIf="canRunRandomDistribution(currentAssignment)"
+            type="button"
+            class="primary-btn"
+            (click)="runRandomDistribution()"
+            [disabled]="isRunningRandomDistribution()"
+          >
+            {{ isRunningRandomDistribution() ? 'Распределяем...' : 'Запустить случайное распределение' }}
+          </button>
+
+          <span class="section-count">{{ teams().length }}</span>
+        </div>
+      </div>
+
+      <div
+        class="banner banner--info"
+        *ngIf="hasTeamFormationEnded(currentAssignment)"
+      >
+        Этап формирования команд завершен, команды доступны только для просмотра.
+      </div>
+
+      <div class="banner banner--info" *ngIf="!hasAssignmentStarted(currentAssignment)">
+        Старт формирования команд:
+        {{ getTeamFormationStartsAt(currentAssignment) | date: 'dd.MM.yyyy HH:mm' }}
+      </div>
+
+      <div class="banner banner--info" *ngIf="currentAssignment.isTeamCompositionLocked && teams().length">
+        Состав команд зафиксирован.
+      </div>
+
+      <div *ngIf="teamsError()" class="banner banner--error">
+        {{ teamsError() }}
+      </div>
+
+      <div *ngIf="teamsSuccess()" class="banner banner--success">
+        {{ teamsSuccess() }}
+      </div>
+
+      <div class="loading-card" *ngIf="isRunningRandomDistribution()">
+        Распределяем студентов по командам...
+      </div>
+
+      <div class="loading-card" *ngIf="isTeamsLoading()">Загружаем команды...</div>
+
+      <div class="teams-list" *ngIf="!isTeamsLoading() && !isRunningRandomDistribution()">
+        <article class="team-card" *ngFor="let team of teams(); trackBy: trackByTeamId">
+          <div class="team-card__head">
+            <div>
+              <h3 class="team-card__title">{{ team.name }}</h3>
+              <p class="team-card__meta">
+                {{ team.members.length }} / {{ currentAssignment.maxTeamSize }} студентов
+              </p>
+              <p class="team-card__captain" *ngIf="team.captain">
+                Капитан: {{ team.captain.lastName }} {{ team.captain.firstName }}
+              </p>
+            </div>
+
+            <div class="team-card__actions">
+              <span
+                class="team-card__capacity"
+                [class.team-card__capacity--full]="isTeamFull(team, currentAssignment)"
+              >
+                {{ isTeamFull(team, currentAssignment) ? 'Заполнена' : 'Есть места' }}
+              </span>
+            </div>
+          </div>
+
+          <div class="team-members" *ngIf="team.members.length; else emptyRandomTeam">
+            <div
+              class="team-member"
+              *ngFor="let member of team.members; trackBy: trackByMemberId"
+            >
+              <div class="team-member__avatar">
+                {{ member.firstName[0] }}{{ member.lastName[0] }}
+              </div>
+
+              <div class="team-member__info">
+                <div class="team-member__name">
+                  {{ member.lastName }} {{ member.firstName }}
+                </div>
+                <div class="team-member__email">{{ member.email }}</div>
+              </div>
+            </div>
+          </div>
+
+          <ng-template #emptyRandomTeam>
+            <div class="empty-card empty-card--inside">В команде пока нет студентов.</div>
+          </ng-template>
+        </article>
+
+        <div class="empty-card" *ngIf="!teams().length">
+          Команды пока не сформированы.
+        </div>
+      </div>
+    </section>
+
     <div
       class="team-modal-backdrop"
       *ngIf="isAddMembersModalOpen() && selectedTeamForMembers() as selectedTeam"

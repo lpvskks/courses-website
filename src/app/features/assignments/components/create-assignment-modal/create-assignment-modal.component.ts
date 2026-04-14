@@ -216,7 +216,7 @@ export class CreateAssignmentModalComponent {
     }
 
     if (!this.isCaptainSelectionDateValid()) {
-      return 'Срок выбора капитана должен быть позже начала задания и раньше срока формирования команды';
+      return 'Срок выбора капитана должен быть не позже начала формирования команды';
     }
 
     return '';
@@ -302,7 +302,7 @@ export class CreateAssignmentModalComponent {
     }
 
     return (
-      this.isAfter('captainSelectionEndsAtUtc', 'startsAtUtc') &&
+      this.isBeforeOrEqual('captainSelectionEndsAtUtc', 'startsAtUtc') &&
       this.isBefore('captainSelectionEndsAtUtc', 'teamFormationEndsAtUtc')
     );
   }
@@ -334,6 +334,20 @@ export class CreateAssignmentModalComponent {
     }
 
     return new Date(earlier).getTime() < new Date(later).getTime();
+  }
+
+  private isBeforeOrEqual(
+    earlierControlName: DateControlName,
+    laterControlName: DateControlName,
+  ): boolean {
+    const earlier = this.form.controls[earlierControlName].getRawValue();
+    const later = this.form.controls[laterControlName].getRawValue();
+
+    if (!earlier || !later) {
+      return true;
+    }
+
+    return new Date(earlier).getTime() <= new Date(later).getTime();
   }
 
   private isAfter(laterControlName: DateControlName, earlierControlName: DateControlName): boolean {

@@ -113,6 +113,13 @@ export class AssignmentsService {
     );
   }
 
+  runRandomDistribution(assignmentId: string): Observable<AssignmentTeam[]> {
+    return this.http.post<AssignmentTeam[]>(
+      `${this.baseUrl}/${assignmentId}/teams/random-distribution`,
+      {},
+    );
+  }
+
   addTeamMember(teamId: string, studentId: string): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/teams/${teamId}/members/${studentId}`, {});
   }

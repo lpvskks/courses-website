@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { forkJoin, timer } from 'rxjs';
 
 import { Assignment } from '../../../../core/models/assigment.model';
 import { AssignmentComment } from '../../../../core/models/assignment-comment.model';
@@ -59,6 +59,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   isCreatingTeam = signal(false);
   isCreateTeamModalOpen = signal(false);
   isAddMembersModalOpen = signal(false);
+  isRunningRandomDistribution = signal(false);
 
   loadError = signal('');
   commentsError = signal('');
@@ -198,15 +199,29 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   }
 
   loadTeamsIfAvailable(assignment: Assignment): void {
-    if (!this.canManageManualTeams(assignment)) {
+    if (this.canManageManualTeams(assignment)) {
+      this.loadManualDistribution(assignment.id);
       return;
     }
 
-    this.loadManualDistribution(assignment.id);
+    if (this.canManageRandomTeams(assignment)) {
+      this.loadAssignmentTeams(assignment.id);
+    }
   }
 
   canManageManualTeams(assignment: Assignment): boolean {
     return (this.isAdmin() || this.isTeacher()) && assignment.teamFormationMode === 'teacher_managed';
+  }
+
+  canManageRandomTeams(assignment: Assignment): boolean {
+    return (this.isAdmin() || this.isTeacher()) && assignment.teamFormationMode === 'random_distribution';
+  }
+
+  canRunRandomDistribution(assignment: Assignment): boolean {
+    return (
+      this.canManageRandomTeams(assignment) &&
+      !this.hasTeamFormationEnded(assignment)
+    );
   }
 
   canEditManualTeams(assignment: Assignment): boolean {
@@ -219,6 +234,76 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     }
 
     return new Date().getTime() >= new Date(assignment.startsAtUtc).getTime();
+  }
+
+  isTeamFormationStageOpen(assignment: Assignment): boolean {
+    if (!assignment.startsAtUtc || !assignment.teamFormationEndsAtUtc) {
+      return false;
+    }
+
+    const now = new Date().getTime();
+    return (
+      now >= new Date(assignment.startsAtUtc).getTime() &&
+      now < new Date(assignment.teamFormationEndsAtUtc).getTime()
+    );
+  }
+
+  hasTeamFormationEnded(assignment: Assignment): boolean {
+    if (!assignment.teamFormationEndsAtUtc) {
+      return false;
+    }
+
+    return new Date().getTime() >= new Date(assignment.teamFormationEndsAtUtc).getTime();
+  }
+
+  getTeamFormationStartsAt(assignment: Assignment): string {
+    return assignment.teamFormationStartsAtUtc || assignment.startsAtUtc;
+  }
+
+  loadAssignmentTeams(assignmentId: string): void {
+    this.isTeamsLoading.set(true);
+    this.teamsError.set('');
+
+    this.assignmentsService.getAssignmentTeams(assignmentId).subscribe({
+      next: (teams) => {
+        this.teams.set(teams);
+        this.availableStudents.set([]);
+        this.isTeamsLoading.set(false);
+      },
+      error: (err) => {
+        console.error(err);
+        this.teams.set([]);
+        this.teamsError.set('Не удалось загрузить команды задания');
+        this.isTeamsLoading.set(false);
+      },
+    });
+  }
+
+  runRandomDistribution(): void {
+    const assignment = this.assignment();
+    if (!assignment || !this.canRunRandomDistribution(assignment) || this.isRunningRandomDistribution()) {
+      return;
+    }
+
+    this.teamsError.set('');
+    this.teamsSuccess.set('');
+    this.isRunningRandomDistribution.set(true);
+
+    forkJoin({
+      teams: this.assignmentsService.runRandomDistribution(assignment.id),
+      minDelay: timer(3000),
+    }).subscribe({
+      next: ({ teams }) => {
+        this.teams.set(teams);
+        this.isRunningRandomDistribution.set(false);
+        this.teamsSuccess.set('Студенты распределены по командам');
+      },
+      error: (err) => {
+        console.error(err);
+        this.isRunningRandomDistribution.set(false);
+        this.teamsError.set(this.getApiErrorMessage(err, 'Не удалось запустить случайное распределение'));
+      },
+    });
   }
 
   loadManualDistribution(assignmentId: string): void {
@@ -624,6 +709,22 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     if (size < 1024) return `${size} Б`;
     if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} КБ`;
     return `${(size / (1024 * 1024)).toFixed(1)} МБ`;
+  }
+
+  private getApiErrorMessage(err: unknown, fallback: string): string {
+    if (err instanceof HttpErrorResponse) {
+      const errorBody = err.error as { title?: string; detail?: string; message?: string } | string | null;
+
+      if (typeof errorBody === 'string' && errorBody.trim()) {
+        return errorBody;
+      }
+
+      if (errorBody && typeof errorBody === 'object') {
+        return errorBody.title || errorBody.detail || errorBody.message || fallback;
+      }
+    }
+
+    return fallback;
   }
 
   trackByCommentId(_: number, comment: AssignmentComment): string {
