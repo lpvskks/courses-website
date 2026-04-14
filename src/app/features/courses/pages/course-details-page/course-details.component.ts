@@ -277,7 +277,13 @@ export class CourseDetailsComponent implements OnInit {
       return;
     }
 
-    this.router.navigate(['/courses', course.id, 'assignments', assignmentId]);
+    const assignment = this.assignments().find((item) => item.id === assignmentId);
+
+    this.router.navigate(['/courses', course.id, 'assignments', assignmentId], {
+      state: {
+        assignment,
+      },
+    });
   }
 
   openCreateAssignmentModal(): void {

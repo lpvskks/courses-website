@@ -1,8 +1,13 @@
 <section class="assignment-details-page">
   <div class="assignment-details-page__topbar">
-    <button type="button" class="back-btn" (click)="back()">← Назад к курсу</button>
+    <button type="button" class="back-btn" (click)="back()">Назад к курсу</button>
 
-    <button type="button" class="primary-btn" (click)="openSolutions()">
+    <button
+      *ngIf="isAdmin() || isTeacher()"
+      type="button"
+      class="primary-btn"
+      (click)="openSolutions()"
+    >
       Открыть решения студентов
     </button>
   </div>
@@ -11,7 +16,58 @@
     {{ loadError() }}
   </div>
 
-  <ng-container *ngIf="!isLoading() && assignment() as currentAssignment">
+  <section *ngIf="!isLoading() && unavailableAssignmentNotice()" class="assignment-unavailable-card">
+    <div class="assignment-unavailable-card__eyebrow">Задание</div>
+    <h1 class="assignment-unavailable-card__title">Задание пока недоступно</h1>
+    <p class="assignment-unavailable-card__text">
+      Сейчас идет выбор капитанов. Можно назначить себя капитаном команды, а само задание
+      откроется позже.
+    </p>
+
+    <ng-container *ngIf="assignment() as currentAssignment">
+      <div class="captain-panel" *ngIf="shouldShowCaptainControls(currentAssignment)">
+        <div class="captain-panel__content">
+          <span class="captain-panel__label">Капитан команды</span>
+          <span class="captain-panel__status" *ngIf="isCaptainInfoLoading()">
+            Загружаем статус...
+          </span>
+          <span class="captain-panel__status" *ngIf="!isCaptainInfoLoading() && captainInfo()">
+            {{
+              captainInfo()?.isCaptain
+                ? 'Вы капитан команды'
+                : 'Вы пока не капитан команды'
+            }}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          class="captain-panel__button"
+          *ngIf="captainInfo()"
+          (click)="toggleCaptainRole()"
+          [disabled]="isCaptainActionLoading()"
+        >
+          {{
+            isCaptainActionLoading()
+              ? 'Сохраняем...'
+              : captainInfo()?.isCaptain
+                ? 'Снять себя с роли капитана'
+                : 'Назначить себя капитаном'
+          }}
+        </button>
+      </div>
+    </ng-container>
+
+    <div *ngIf="captainActionError()" class="banner banner--error banner--compact">
+      {{ captainActionError() }}
+    </div>
+
+    <div *ngIf="captainActionSuccess()" class="banner banner--success banner--compact">
+      {{ captainActionSuccess() }}
+    </div>
+  </section>
+
+  <ng-container *ngIf="!isLoading() && !unavailableAssignmentNotice() && assignment() as currentAssignment">
     <section class="assignment-hero">
       <div class="assignment-hero__badges">
         <span
@@ -29,6 +85,46 @@
           <p class="assignment-hero__text">
             {{ currentAssignment.text }}
           </p>
+
+          <div class="captain-panel" *ngIf="shouldShowCaptainControls(currentAssignment)">
+            <div class="captain-panel__content">
+              <span class="captain-panel__label">Капитан команды</span>
+              <span class="captain-panel__status" *ngIf="isCaptainInfoLoading()">
+                Загружаем статус...
+              </span>
+              <span class="captain-panel__status" *ngIf="!isCaptainInfoLoading() && captainInfo()">
+                {{
+                  captainInfo()?.isCaptain
+                    ? 'Вы капитан команды'
+                    : 'Вы пока не капитан команды'
+                }}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              class="captain-panel__button"
+              *ngIf="captainInfo()"
+              (click)="toggleCaptainRole()"
+              [disabled]="isCaptainActionLoading()"
+            >
+              {{
+                isCaptainActionLoading()
+                  ? 'Сохраняем...'
+                  : captainInfo()?.isCaptain
+                    ? 'Снять себя с роли капитана'
+                    : 'Назначить себя капитаном'
+              }}
+            </button>
+          </div>
+
+          <div *ngIf="captainActionError()" class="banner banner--error banner--compact">
+            {{ captainActionError() }}
+          </div>
+
+          <div *ngIf="captainActionSuccess()" class="banner banner--success banner--compact">
+            {{ captainActionSuccess() }}
+          </div>
         </div>
 
         <div class="assignment-hero__meta">
@@ -62,12 +158,12 @@
             target="_blank"
             rel="noopener noreferrer"
           >
-            <div class="file-card__icon">📎</div>
+            <div class="file-card__icon">Ф</div>
 
             <div class="file-card__content">
               <div class="file-card__name">{{ file.fileName }}</div>
               <div class="file-card__meta">
-                {{ file.mimeType }} • {{ formatFileSize(file.size) }}
+                {{ file.mimeType }} / {{ formatFileSize(file.size) }}
               </div>
             </div>
           </a>
@@ -91,7 +187,7 @@
 
         <div class="comment-form__actions">
           <button type="submit" class="primary-btn" [disabled]="isSendingComment()">
-            {{ isSendingComment() ? 'Отправка...' : 'Отправить комментарий' }}
+            {{ isSendingComment() ? 'Отправляем...' : 'Отправить комментарий' }}
           </button>
         </div>
       </form>

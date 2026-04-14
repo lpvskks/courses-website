@@ -137,22 +137,12 @@ export class LoginFormComponent {
       .pipe(
         switchMap(() => this.userService.getMyRole()),
         tap((roleResponse) => {
-          if (roleResponse.role === 'Student') {
-            this.authService.logout();
-            throw new Error('STUDENT_FORBIDDEN');
-          }
-
           localStorage.setItem('user_role', roleResponse.role);
         }),
         finalize(() => {
           this.isSubmitting.set(false);
         }),
         catchError((err) => {
-          if (err.message === 'STUDENT_FORBIDDEN') {
-            this.submitError.set('Вход для студентов запрещен');
-            return EMPTY;
-          }
-
           console.error(err);
           this.submitError.set('Не удалось выполнить вход');
           return EMPTY;

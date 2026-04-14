@@ -28,22 +28,24 @@
 }
 
 .assignment-row--unavailable {
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-  border-color: #e2e8f0;
-  box-shadow: none;
-  cursor: default;
-  opacity: 0.82;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(245, 243, 255, 0.92) 100%);
+  border-color: #ddd6fe;
+  box-shadow: 0 10px 30px rgba(109, 40, 217, 0.06);
+  cursor: pointer;
 }
 
 .assignment-row--unavailable:hover {
-  transform: none;
-  border-color: #e2e8f0;
-  box-shadow: none;
+  transform: translateY(-2px);
+  border-color: #ddd6fe;
+  box-shadow: 0 16px 36px rgba(109, 40, 217, 0.10);
 }
 
 .assignment-row__badge {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .assignment-badge {
@@ -65,8 +67,21 @@
 }
 
 .assignment-badge--unavailable {
-  background: #e2e8f0;
+  background: #f5f3ff;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+}
+
+.assignment-badge--available {
+  background: #eefbf3;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.assignment-badge--finished {
+  background: #f1f5f9;
   color: #475569;
+  border: 1px solid #cbd5e1;
 }
 
 .assignment-row__content {
@@ -78,11 +93,6 @@
   font-size: 20px;
   font-weight: 800;
   color: #0f172a;
-}
-
-.assignment-row--unavailable .assignment-row__title,
-.assignment-row--unavailable .assignment-meta__value {
-  color: #64748b;
 }
 
 .assignment-row__text {
@@ -100,9 +110,10 @@
   margin-top: 10px;
   display: inline-flex;
   padding: 7px 10px;
-  border-radius: 999px;
-  background: #e2e8f0;
-  color: #475569;
+  border-radius: 8px;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  color: #6d28d9;
   font-size: 12px;
   font-weight: 800;
 }

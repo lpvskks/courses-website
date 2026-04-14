@@ -21,6 +21,14 @@ export interface CreateAssignmentRequest {
   deadline: string;
 }
 
+export interface AssignmentCaptainInfo {
+  assignmentId: string;
+  isCaptain: boolean;
+  teamId: string | null;
+  finalSubmissionId: string | null;
+  canSelectFinalSubmission: boolean;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -34,6 +42,18 @@ export class AssignmentsService {
 
   getAssignmentComments(assignmentId: string): Observable<AssignmentComment[]> {
     return this.http.get<AssignmentComment[]>(`${this.baseUrl}/${assignmentId}/comments`);
+  }
+
+  getMyCaptainInfo(assignmentId: string): Observable<AssignmentCaptainInfo> {
+    return this.http.get<AssignmentCaptainInfo>(`${this.baseUrl}/${assignmentId}/captains/me`);
+  }
+
+  assignMyselfCaptain(assignmentId: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${assignmentId}/captains/self`, {});
+  }
+
+  removeMyselfCaptain(assignmentId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${assignmentId}/captains/self`);
   }
 
   createComment(assignmentId: string, payload: { text: string }): Observable<AssignmentComment> {

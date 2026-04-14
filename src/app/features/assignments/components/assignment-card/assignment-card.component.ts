@@ -17,14 +17,34 @@ export class AssignmentCardComponent {
   @Output() open = new EventEmitter<string>();
 
   get isUnavailableForStudent(): boolean {
-    return this.isStudent && this.assignment.isClosed;
+    return this.isStudent && this.assignment.isVisible && !this.assignment.isClosed;
+  }
+
+  get statusLabel(): string {
+    if (this.assignment.status === 'available') {
+      return 'Доступно';
+    }
+
+    if (this.assignment.status === 'finished') {
+      return 'Завершено';
+    }
+
+    return '';
+  }
+
+  get statusModifierClass(): string {
+    if (this.assignment.status === 'available') {
+      return 'assignment-badge--available';
+    }
+
+    if (this.assignment.status === 'finished') {
+      return 'assignment-badge--finished';
+    }
+
+    return '';
   }
 
   onOpen(): void {
-    if (this.isUnavailableForStudent) {
-      return;
-    }
-
     this.open.emit(this.assignment.id);
   }
 }

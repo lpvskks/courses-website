@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -13,7 +14,10 @@ import { forkJoin } from 'rxjs';
 
 import { Assignment } from '../../../../core/models/assigment.model';
 import { AssignmentComment } from '../../../../core/models/assignment-comment.model';
-import { AssignmentsService } from '../../../assignments/services/assignments.service';
+import {
+  AssignmentCaptainInfo,
+  AssignmentsService,
+} from '../../../assignments/services/assignments.service';
 
 @Component({
   selector: 'app-course-assignment-details',
@@ -32,21 +36,28 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   readonly role = signal(localStorage.getItem('user_role'));
   readonly isAdmin = computed(() => this.role() === 'Admin');
   readonly isTeacher = computed(() => this.role() === 'Teacher');
+  readonly isStudent = computed(() => this.role() === 'Student');
 
   courseId = signal<string | null>(null);
   assignmentId = signal<string | null>(null);
 
   assignment = signal<Assignment | null>(null);
   comments = signal<AssignmentComment[]>([]);
+  captainInfo = signal<AssignmentCaptainInfo | null>(null);
 
   isLoading = signal(true);
   isCommentsLoading = signal(true);
   isSendingComment = signal(false);
+  isCaptainInfoLoading = signal(false);
+  isCaptainActionLoading = signal(false);
 
   loadError = signal('');
   commentsError = signal('');
   submitError = signal('');
   submitSuccess = signal('');
+  captainActionError = signal('');
+  captainActionSuccess = signal('');
+  unavailableAssignmentNotice = signal('');
 
   readonly commentForm = this.fb.nonNullable.group({
     text: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(1000)]],
@@ -77,6 +88,10 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     this.commentsError.set('');
     this.submitError.set('');
     this.submitSuccess.set('');
+    this.captainInfo.set(null);
+    this.captainActionError.set('');
+    this.captainActionSuccess.set('');
+    this.unavailableAssignmentNotice.set('');
 
     forkJoin({
       assignment: this.assignmentsService.getAssignmentById(assignmentId),
@@ -87,12 +102,121 @@ export class CourseAssignmentDetailsComponent implements OnInit {
         this.comments.set(comments);
         this.isLoading.set(false);
         this.isCommentsLoading.set(false);
+        this.loadCaptainInfoIfAvailable(assignment);
       },
       error: (err) => {
         console.error(err);
+
+        if (this.handleUnavailableAssignment(err)) {
+          return;
+        }
+
         this.loadError.set('Не удалось загрузить задание');
         this.isLoading.set(false);
         this.isCommentsLoading.set(false);
+      },
+    });
+  }
+
+  handleUnavailableAssignment(err: unknown): boolean {
+    if (!(err instanceof HttpErrorResponse) || err.status !== 403) {
+      return false;
+    }
+
+    const fallbackAssignment = history.state?.assignment as Assignment | undefined;
+
+    if (!fallbackAssignment) {
+      this.unavailableAssignmentNotice.set('Задание пока недоступно');
+      this.isLoading.set(false);
+      this.isCommentsLoading.set(false);
+      return true;
+    }
+
+    this.assignment.set(fallbackAssignment);
+    this.comments.set([]);
+    this.isLoading.set(false);
+    this.isCommentsLoading.set(false);
+    this.unavailableAssignmentNotice.set(
+      'Задание пока недоступно. Сейчас идет выбор капитанов, и вы можете подать заявку.',
+    );
+    this.loadCaptainInfoIfAvailable(fallbackAssignment);
+
+    return true;
+  }
+
+  loadCaptainInfoIfAvailable(assignment: Assignment): void {
+    if (!this.shouldShowCaptainControls(assignment)) {
+      this.captainInfo.set(null);
+      return;
+    }
+
+    this.loadCaptainInfo(assignment.id);
+  }
+
+  loadCaptainInfo(assignmentId: string): void {
+    this.isCaptainInfoLoading.set(true);
+    this.captainActionError.set('');
+
+    this.assignmentsService.getMyCaptainInfo(assignmentId).subscribe({
+      next: (captainInfo) => {
+        this.captainInfo.set(captainInfo);
+        this.isCaptainInfoLoading.set(false);
+      },
+      error: (err) => {
+        console.error(err);
+        this.captainInfo.set(null);
+        this.isCaptainInfoLoading.set(false);
+        this.captainActionError.set('Не удалось загрузить статус капитана');
+      },
+    });
+  }
+
+  shouldShowCaptainControls(assignment: Assignment): boolean {
+    return this.isStudent() && this.isTeamFormationOpen(assignment);
+  }
+
+  isTeamFormationOpen(assignment: Assignment): boolean {
+    if (!assignment.teamFormationEndsAtUtc) {
+      return false;
+    }
+
+    return new Date().getTime() < new Date(assignment.teamFormationEndsAtUtc).getTime();
+  }
+
+  toggleCaptainRole(): void {
+    const assignment = this.assignment();
+    const captainInfo = this.captainInfo();
+
+    if (!assignment || !captainInfo || this.isCaptainActionLoading()) {
+      return;
+    }
+
+    this.captainActionError.set('');
+    this.captainActionSuccess.set('');
+    this.isCaptainActionLoading.set(true);
+
+    const request$ = captainInfo.isCaptain
+      ? this.assignmentsService.removeMyselfCaptain(assignment.id)
+      : this.assignmentsService.assignMyselfCaptain(assignment.id);
+
+    request$.subscribe({
+      next: () => {
+        this.captainActionSuccess.set(
+          captainInfo.isCaptain
+            ? 'Вы сняли себя с роли капитана'
+            : 'Вы назначили себя капитаном',
+        );
+        this.isCaptainActionLoading.set(false);
+        this.loadCaptainInfo(assignment.id);
+      },
+      error: (err) => {
+        console.error(err);
+        this.captainActionError.set(
+          captainInfo.isCaptain
+            ? 'Не удалось снять себя с роли капитана'
+            : 'Не удалось назначить себя капитаном',
+        );
+        this.isCaptainActionLoading.set(false);
       },
     });
   }
@@ -108,7 +232,9 @@ export class CourseAssignmentDetailsComponent implements OnInit {
       error: (err) => {
         console.error(err);
         this.isSendingComment.set(false);
-        this.submitError.set('Комментарий отправлен, но не удалось обновить комментарии');
+        this.submitError.set(
+          'Комментарий отправлен, но не удалось обновить комментарии',
+        );
       },
     });
   }

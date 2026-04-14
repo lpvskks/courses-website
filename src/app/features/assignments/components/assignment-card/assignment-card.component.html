@@ -1,23 +1,28 @@
 <article
   class="assignment-row"
   [class.assignment-row--unavailable]="isUnavailableForStudent"
-  [attr.role]="isUnavailableForStudent ? null : 'button'"
-  [attr.tabindex]="isUnavailableForStudent ? null : 0"
+  role="button"
+  tabindex="0"
   (click)="onOpen()"
 >
   <div class="assignment-row__badge">
     <span
       class="assignment-badge"
       [class.assignment-badge--submission]="assignment.requiresSubmission"
-      [class.assignment-badge--unavailable]="isUnavailableForStudent"
     >
-      {{
-        isUnavailableForStudent
-          ? 'Недоступно'
-          : assignment.requiresSubmission
-            ? 'Со сдачей'
-            : 'Без сдачи'
-      }}
+      {{ assignment.requiresSubmission ? 'Со сдачей' : 'Без сдачи' }}
+    </span>
+
+    <span class="assignment-badge assignment-badge--unavailable" *ngIf="isUnavailableForStudent">
+      Недоступно
+    </span>
+
+    <span
+      class="assignment-badge"
+      [ngClass]="statusModifierClass"
+      *ngIf="!isUnavailableForStudent && statusLabel"
+    >
+      {{ statusLabel }}
     </span>
   </div>
 
@@ -31,7 +36,7 @@
     </p>
 
     <div class="assignment-row__locked-message" *ngIf="isUnavailableForStudent">
-      Задание откроется {{ assignment.startsAtUtc | date: 'dd.MM.yyyy HH:mm' }}
+      Откроется {{ assignment.startsAtUtc | date: 'dd.MM.yyyy HH:mm' }}
     </div>
   </div>
 

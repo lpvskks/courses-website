@@ -8,7 +8,6 @@ import {
   OnInit,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { of } from 'rxjs';
 
 import { Course, CoursesService } from '../../services/courses.service';
 import { CreateCourseModalComponent } from '../../components/create-course-modal/create-course-modal.component';
@@ -46,9 +45,9 @@ export class CoursesComponent implements OnInit {
     const request$ =
       role === 'Admin'
         ? this.coursesService.getCourses()
-        : role === 'Teacher'
-          ? this.coursesService.getMyCourses('Teacher')
-          : of([]);
+        : role === 'Teacher' || role === 'Student'
+          ? this.coursesService.getMyCourses(role)
+          : this.coursesService.getMyCourses();
 
     request$.subscribe({
       next: (courses) => {
