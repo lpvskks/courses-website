@@ -2,6 +2,11 @@
   <div *ngIf="loadError()" class="error-banner">
     {{ loadError() }}
   </div>
+
+  <div *ngIf="leaveCourseError()" class="error-banner">
+    {{ leaveCourseError() }}
+  </div>
+
   <div class="course-topbar">
     <div class="course-topbar__left">
       <button type="button" class="back-btn" (click)="back()">← Назад к курсам</button>
@@ -33,12 +38,16 @@
       [course]="currentCourse"
       [form]="form"
       [isAdmin]="isAdmin()"
+      [isTeacher]="isTeacher()"
+      [isStudent]="isStudent()"
       [isEditMode]="isEditMode()"
       [isSaving]="isSaving()"
+      [isLeavingCourse]="isLeaveCourseLoading()"
       [submitError]="submitError()"
       [nameError]="nameError"
       [descriptionError]="descriptionError"
       (openUsers)="openCourseUsers()"
+      (leaveCourse)="leaveCourse()"
       (enableEdit)="enableEdit()"
       (cancelEdit)="cancelEdit()"
       (save)="save()"

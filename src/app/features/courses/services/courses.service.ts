@@ -20,6 +20,10 @@ export interface UpdateCourseRequest {
   registrationEndsAtUtc?: string;
 }
 
+export interface JoinCourseRequest {
+  code: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -43,6 +47,15 @@ export class CoursesService {
   createCourse(request: UpdateCourseRequest): Observable<Course> {
     return this.http.post<Course>(this.baseUrl, request);
   }
+
+  joinCourse(request: JoinCourseRequest): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/join`, request);
+  }
+
+  leaveCourse(courseId: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${courseId}/leave`, {});
+  }
+
   updateCourse(courseId: string, request: UpdateCourseRequest): Observable<Course> {
     return this.http.put<Course>(`${this.baseUrl}/${courseId}`, request);
   }

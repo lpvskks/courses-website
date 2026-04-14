@@ -73,6 +73,16 @@
   justify-content: center;
 }
 
+.ghost-btn--leave {
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.ghost-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .course-form {
   display: flex;
   flex-direction: column;

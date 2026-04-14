@@ -31,13 +31,17 @@ export class CourseBannerComponent {
   @Input({ required: true }) course!: Course;
   @Input({ required: true }) form!: FormGroup;
   @Input() isAdmin = false;
+  @Input() isTeacher = false;
+  @Input() isStudent = false;
   @Input() isEditMode = false;
   @Input() isSaving = false;
+  @Input() isLeavingCourse = false;
   @Input() submitError = '';
   @Input() nameError = '';
   @Input() descriptionError = '';
 
   @Output() openUsers = new EventEmitter<void>();
+  @Output() leaveCourse = new EventEmitter<void>();
   @Output() enableEdit = new EventEmitter<void>();
   @Output() cancelEdit = new EventEmitter<void>();
   @Output() save = new EventEmitter<void>();

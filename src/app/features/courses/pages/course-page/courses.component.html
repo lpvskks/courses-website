@@ -4,14 +4,30 @@
       <h1 class="courses-page__title">Курсы</h1>
       <p class="courses-page__subtitle">Управление учебными курсами в системе Марсик</p>
     </div>
-    <button
-      *ngIf="isAdmin()"
-      type="button"
-      class="courses-page__create-btn"
-      (click)="openCreateModal()"
-    >
-      Создать курс
-    </button>
+
+    <div class="courses-page__actions">
+      <button
+        *ngIf="isStudent()"
+        type="button"
+        class="courses-page__create-btn courses-page__create-btn--join"
+        (click)="openJoinModal()"
+      >
+        Присоединиться к курсу
+      </button>
+
+      <button
+        *ngIf="isAdmin()"
+        type="button"
+        class="courses-page__create-btn"
+        (click)="openCreateModal()"
+      >
+        Создать курс
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="joinCourseSuccess()" class="courses-alert courses-alert--success">
+    {{ joinCourseSuccess() }}
   </div>
 
   <ng-container *ngIf="courses().length">
@@ -108,3 +124,69 @@
   (closed)="closeCreateModal()"
   (created)="onCourseCreated($event)"
 ></app-create-course-modal>
+
+<div class="join-modal-backdrop" *ngIf="isJoinModalOpen()" (click)="closeJoinModal()">
+  <section class="join-modal" (click)="$event.stopPropagation()">
+    <button
+      type="button"
+      class="join-modal__close"
+      aria-label="Закрыть"
+      (click)="closeJoinModal()"
+      [disabled]="isJoiningCourse()"
+    >
+      ×
+    </button>
+
+    <div class="join-modal__head">
+      <span class="join-modal__eyebrow">Код курса</span>
+      <h2 class="join-modal__title">Присоединиться к курсу</h2>
+      <p class="join-modal__subtitle">Введите код, который выдал преподаватель.</p>
+    </div>
+
+    <form class="join-modal__form" [formGroup]="joinCourseForm" (ngSubmit)="joinCourse()">
+      <label class="join-modal__field">
+        <span class="join-modal__label">Код</span>
+        <input
+          class="join-modal__input"
+          type="text"
+          formControlName="code"
+          placeholder="Например: COURSE-2026"
+          autocomplete="off"
+        />
+      </label>
+
+      <div
+        class="join-modal__error"
+        *ngIf="joinCourseForm.controls.code.touched && joinCourseForm.controls.code.hasError('required')"
+      >
+        Введите код курса
+      </div>
+
+      <div
+        class="join-modal__error"
+        *ngIf="joinCourseForm.controls.code.touched && joinCourseForm.controls.code.hasError('maxlength')"
+      >
+        Код слишком длинный
+      </div>
+
+      <div class="join-modal__error" *ngIf="joinCourseError()">
+        {{ joinCourseError() }}
+      </div>
+
+      <div class="join-modal__actions">
+        <button
+          type="button"
+          class="join-modal__secondary-btn"
+          (click)="closeJoinModal()"
+          [disabled]="isJoiningCourse()"
+        >
+          Отмена
+        </button>
+
+        <button type="submit" class="join-modal__primary-btn" [disabled]="isJoiningCourse()">
+          {{ isJoiningCourse() ? 'Отправляем...' : 'Присоединиться' }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>

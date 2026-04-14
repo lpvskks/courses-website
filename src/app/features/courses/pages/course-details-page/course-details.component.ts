@@ -44,8 +44,10 @@ export class CourseDetailsComponent implements OnInit {
   isCreateAssignmentModalOpen = signal(false);
 
   isArchiveActionLoading = signal(false);
+  isLeaveCourseLoading = signal(false);
   archiveActionError = signal('');
   archiveActionSuccess = signal('');
+  leaveCourseError = signal('');
 
   currentPage = signal(1);
   pageSize = signal(6);
@@ -58,6 +60,7 @@ export class CourseDetailsComponent implements OnInit {
 
   readonly role = signal(localStorage.getItem('user_role'));
   readonly isAdmin = computed(() => this.role() === 'Admin');
+  readonly isTeacher = computed(() => this.role() === 'Teacher');
   readonly isStudent = computed(() => this.role() === 'Student');
 
   readonly form = this.fb.nonNullable.group({
@@ -264,11 +267,34 @@ export class CourseDetailsComponent implements OnInit {
   openCourseUsers(): void {
     const course = this.course();
 
-    if (!course) {
+    if (!course || !this.isTeacher()) {
       return;
     }
 
     this.router.navigate(['/courses', course.id, 'users']);
+  }
+
+  leaveCourse(): void {
+    const course = this.course();
+
+    if (!course || !this.isStudent() || this.isLeaveCourseLoading()) {
+      return;
+    }
+
+    this.leaveCourseError.set('');
+    this.isLeaveCourseLoading.set(true);
+
+    this.coursesService.leaveCourse(course.id).subscribe({
+      next: () => {
+        this.isLeaveCourseLoading.set(false);
+        this.router.navigate(['/courses']);
+      },
+      error: (err) => {
+        console.error('Ошибка выхода из курса', err);
+        this.isLeaveCourseLoading.set(false);
+        this.leaveCourseError.set('Не удалось покинуть курс');
+      },
+    });
   }
 
   openAssignment(assignmentId: string): void {

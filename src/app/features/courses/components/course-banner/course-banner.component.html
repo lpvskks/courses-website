@@ -13,6 +13,7 @@
 
       <div class="course-hero__actions">
         <button
+          *ngIf="isTeacher"
           type="button"
           class="ghost-btn"
           matTooltip="Пользователи курса"
@@ -20,6 +21,18 @@
           (click)="openUsers.emit()"
         >
           <mat-icon>groups</mat-icon>
+        </button>
+
+        <button
+          *ngIf="isStudent"
+          type="button"
+          class="ghost-btn ghost-btn--leave"
+          matTooltip="Покинуть курс"
+          matTooltipPosition="below"
+          (click)="leaveCourse.emit()"
+          [disabled]="isLeavingCourse"
+        >
+          <mat-icon>logout</mat-icon>
         </button>
 
         <button
