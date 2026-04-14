@@ -3,3 +3,574 @@
   padding: 16px !important;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18) !important;
 }
+
+.teams-card {
+  margin-bottom: 24px;
+  border-radius: 28px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(208, 226, 255, 0.9);
+  box-shadow: 0 14px 40px rgba(0, 92, 187, 0.08), 0 4px 16px rgba(15, 23, 42, 0.04);
+}
+
+.teams-card__header,
+.teams-card__actions,
+.team-card__head,
+.team-member,
+.available-student,
+.available-students__head,
+.team-modal__head,
+.team-modal__actions,
+.team-modal__students-head {
+  display: flex;
+}
+
+.teams-card__header {
+  align-items: flex-start;
+}
+
+.teams-card__actions {
+  align-items: center;
+  gap: 12px;
+}
+
+.teams-list,
+.team-members,
+.available-students__list,
+.team-modal__form,
+.team-modal__field,
+.team-modal__students-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.teams-list {
+  gap: 14px;
+}
+
+.team-card,
+.available-students {
+  border-radius: 22px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border: 1px solid #dbeafe;
+  box-shadow: 0 8px 24px rgba(0, 92, 187, 0.06);
+}
+
+.team-card,
+.available-students {
+  padding: 18px;
+}
+
+.team-card__head {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.team-card__title {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.team-card__meta {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.team-card__captain {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: #005cbb;
+}
+
+.team-card__capacity {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #eefbf3;
+  color: #15803d;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.team-card__capacity--full {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.team-card__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.team-members,
+.available-students__list {
+  gap: 10px;
+}
+
+.team-member,
+.available-student {
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(239, 246, 255, 0.7);
+  border: 1px solid rgba(147, 197, 253, 0.5);
+}
+
+.team-member__avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.team-member__info {
+  min-width: 0;
+  flex: 1;
+}
+
+.team-member__name,
+.team-modal-student__name {
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.team-member__email,
+.team-modal-student__email {
+  margin-top: 2px;
+  font-size: 13px;
+  color: #64748b;
+  word-break: break-word;
+}
+
+.small-danger-btn,
+.small-primary-btn,
+.secondary-action-btn {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.small-danger-btn {
+  background: #fff1f2;
+  color: #be123c;
+  border: 1px solid #fecdd3;
+}
+
+.small-primary-btn,
+.secondary-action-btn {
+  background: #eef5ff;
+  color: #005cbb;
+  border: 1px solid #d0e2ff;
+}
+
+.small-danger-btn:disabled,
+.small-primary-btn:disabled,
+.secondary-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.available-students {
+  position: sticky;
+  top: 18px;
+}
+
+.available-students__head {
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.available-students__head h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.available-students__head span {
+  min-width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef5ff;
+  color: #005cbb;
+  font-weight: 800;
+}
+
+.available-student {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.available-student__actions {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-left: 54px;
+}
+
+.empty-card--inside {
+  margin-bottom: 0;
+  box-shadow: none;
+}
+
+.team-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.34);
+  backdrop-filter: blur(8px);
+}
+
+.team-modal {
+  width: min(780px, 100%);
+  max-height: min(760px, calc(100vh - 48px));
+  overflow: auto;
+  border-radius: 30px;
+  padding: 28px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(247, 251, 255, 0.96)), white;
+  border: 1px solid rgba(191, 219, 254, 0.95);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.2), 0 8px 24px rgba(0, 92, 187, 0.1);
+}
+
+.team-modal--compact {
+  width: min(680px, 100%);
+}
+
+.team-modal__head {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.team-modal__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  margin-bottom: 12px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #eef5ff;
+  color: #005cbb;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.team-modal__title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.team-modal__subtitle {
+  margin: 10px 0 0;
+  color: #64748b;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.team-modal__close {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: #eef5ff;
+  color: #005cbb;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.team-modal__form {
+  gap: 14px;
+}
+
+.team-modal__field {
+  gap: 8px;
+}
+
+.team-modal__field span,
+.team-modal__students-head span {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1e3a5f;
+}
+
+.team-modal__field input,
+.team-modal__field select {
+  height: 42px;
+  box-sizing: border-box;
+  border: 1px solid #d0e2ff;
+  border-radius: 14px;
+  padding: 0 14px;
+  font: inherit;
+  color: #0f172a;
+  background: #fff;
+  outline: none;
+}
+
+.team-modal__field input:focus,
+.team-modal__field select:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.16);
+}
+
+.team-modal__students {
+  padding: 14px;
+  border-radius: 18px;
+  background: #f8fbff;
+  border: 1px solid #dbeafe;
+}
+
+.team-modal__students-head {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.team-modal__students-head p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.team-modal__students-list {
+  gap: 10px;
+}
+
+.team-modal-student {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid #dbeafe;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.team-modal-student--selected {
+  background: #eef5ff;
+  border-color: #93c5fd;
+}
+
+.team-modal-student--captain {
+  background: #eff6ff;
+  border-color: #60a5fa;
+}
+
+.team-modal-student__content {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.team-modal-student__state {
+  min-height: 34px;
+  flex-shrink: 0;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #d0e2ff;
+  display: inline-flex;
+  align-items: center;
+  background: #fff;
+  color: #005cbb;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.team-modal-student--captain .team-modal-student__state {
+  background: linear-gradient(135deg, #005cbb 0%, #1976d2 100%);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(0, 92, 187, 0.16);
+}
+
+.team-compose {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.team-compose__slot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #dbeafe;
+}
+
+.team-compose__label {
+  display: block;
+  margin-bottom: 4px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.team-compose__slot strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.selected-person,
+.selected-member-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.selected-person {
+  margin-top: 4px;
+}
+
+.selected-person span:last-child,
+.selected-member-row span:last-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.selected-person small,
+.selected-member-row small {
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 12px;
+  word-break: break-word;
+}
+
+.selected-members {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.selected-member-row {
+  min-width: 0;
+  padding: 10px;
+  border-radius: 14px;
+  background: #eef5ff;
+  border: 1px solid #d0e2ff;
+}
+
+.team-picker-panel {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid #dbeafe;
+}
+
+.team-picker-panel__head {
+  margin-bottom: 12px;
+}
+
+.team-picker-panel__head h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.team-picker-panel__head p {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.team-modal__actions {
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.team-modal__error {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .available-students {
+    position: static;
+  }
+}
+
+@media (max-width: 720px) {
+  .teams-card,
+  .team-modal {
+    padding: 20px;
+  }
+
+  .teams-card__header,
+  .team-card__head,
+  .team-member,
+  .team-modal__head,
+  .team-compose__slot {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .team-compose {
+    grid-template-columns: 1fr;
+  }
+
+  .available-student__actions {
+    padding-left: 0;
+  }
+}

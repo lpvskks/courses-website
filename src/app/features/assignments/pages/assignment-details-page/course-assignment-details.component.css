@@ -82,6 +82,12 @@
   border-color: #bbf7d0;
 }
 
+.banner--info {
+  color: #1e3a5f;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
 .assignment-hero {
   border-radius: 30px;
   padding: 30px;
@@ -167,6 +173,11 @@
 .status-badge--submission {
   background: #eefbf3;
   color: #15803d;
+}
+
+.status-badge--mode {
+  background: #f5f3ff;
+  color: #6d28d9;
 }
 
 .assignment-hero__title {
@@ -312,6 +323,13 @@
   color: #0f172a;
 }
 
+.section-subtitle {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #64748b;
+}
+
 .section-count {
   min-width: 36px;
   height: 36px;
@@ -396,6 +414,7 @@
     0 14px 40px rgba(0, 92, 187, 0.08),
     0 4px 16px rgba(15, 23, 42, 0.04);
 }
+
 
 .comment-form {
   display: flex;
@@ -511,6 +530,7 @@
     align-items: stretch;
     flex-direction: column;
   }
+
 }
 
 @media (max-width: 720px) {
@@ -529,4 +549,5 @@
   .comments-card {
     padding: 20px;
   }
+
 }

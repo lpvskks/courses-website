@@ -29,6 +29,37 @@ export interface AssignmentCaptainInfo {
   canSelectFinalSubmission: boolean;
 }
 
+export interface AssignmentTeamMember {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  createdAtUtc: string;
+}
+
+export interface AssignmentTeamStudent {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  isBlocked: boolean;
+}
+
+export interface AssignmentTeam {
+  id: string;
+  assignmentId: string;
+  captain: AssignmentTeamMember | null;
+  finalSubmissionId: string | null;
+  name: string;
+  createdAtUtc: string;
+  members: AssignmentTeamMember[];
+}
+
+export interface ManualDistributionResponse {
+  teams: AssignmentTeam[];
+  availableStudents: AssignmentTeamStudent[];
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -52,6 +83,10 @@ export class AssignmentsService {
     return this.http.post<void>(`${this.baseUrl}/${assignmentId}/captains/self`, {});
   }
 
+  assignCaptain(assignmentId: string, studentId: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${assignmentId}/captains/${studentId}`, {});
+  }
+
   removeMyselfCaptain(assignmentId: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${assignmentId}/captains/self`);
   }
@@ -62,6 +97,28 @@ export class AssignmentsService {
 
   createAssignment(payload: CreateAssignmentRequest): Observable<Assignment> {
     return this.http.post<Assignment>(this.baseUrl, payload);
+  }
+
+  createTeam(assignmentId: string, payload: { name: string }): Observable<AssignmentTeam> {
+    return this.http.post<AssignmentTeam>(`${this.baseUrl}/${assignmentId}/teams`, payload);
+  }
+
+  getAssignmentTeams(assignmentId: string): Observable<AssignmentTeam[]> {
+    return this.http.get<AssignmentTeam[]>(`${this.baseUrl}/${assignmentId}/teams`);
+  }
+
+  getManualDistribution(assignmentId: string): Observable<ManualDistributionResponse> {
+    return this.http.get<ManualDistributionResponse>(
+      `${this.baseUrl}/${assignmentId}/teams/manual-distribution`,
+    );
+  }
+
+  addTeamMember(teamId: string, studentId: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/teams/${teamId}/members/${studentId}`, {});
+  }
+
+  removeTeamMember(teamId: string, studentId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/teams/${teamId}/members/${studentId}`);
   }
 
   uploadAssignmentFiles(assignmentId: string, files: File[]): Observable<void> {

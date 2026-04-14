@@ -76,6 +76,10 @@
         >
           {{ currentAssignment.requiresSubmission ? 'Со сдачей' : 'Без сдачи' }}
         </span>
+
+        <span class="status-badge status-badge--mode" *ngIf="currentAssignment.teamFormationMode === 'teacher_managed'">
+          Ручное распределение
+        </span>
       </div>
 
       <div class="assignment-hero__head">
@@ -129,6 +133,13 @@
 
         <div class="assignment-hero__meta">
           <div class="meta-card">
+            <span class="meta-card__label">Размер команды</span>
+            <span class="meta-card__value">
+              {{ currentAssignment.minTeamSize }}-{{ currentAssignment.maxTeamSize }}
+            </span>
+          </div>
+
+          <div class="meta-card">
             <span class="meta-card__label">Дедлайн</span>
             <span class="meta-card__value">
               {{ currentAssignment.deadline | date: 'dd.MM.yyyy HH:mm' }}
@@ -170,6 +181,361 @@
         </div>
       </div>
     </section>
+
+    <section class="teams-card" *ngIf="canManageManualTeams(currentAssignment)">
+      <div class="section-header teams-card__header">
+        <div>
+          <h2 class="section-title">Команды задания</h2>
+          <p class="section-subtitle">Создайте команды и распределите студентов вручную.</p>
+        </div>
+
+        <div class="teams-card__actions">
+          <button
+            *ngIf="canEditManualTeams(currentAssignment)"
+            type="button"
+            class="primary-btn"
+            (click)="openCreateTeamModal()"
+          >
+            Создать команду
+          </button>
+
+          <span class="section-count">{{ teams().length }}</span>
+        </div>
+      </div>
+
+      <div class="banner banner--info" *ngIf="hasAssignmentStarted(currentAssignment)">
+        Задание уже началось, поэтому состав команд доступен только для просмотра.
+      </div>
+
+      <div *ngIf="teamsError()" class="banner banner--error">
+        {{ teamsError() }}
+      </div>
+
+      <div *ngIf="teamsSuccess()" class="banner banner--success">
+        {{ teamsSuccess() }}
+      </div>
+
+      <div class="loading-card" *ngIf="isTeamsLoading()">Загружаем команды...</div>
+
+      <div class="teams-list" *ngIf="!isTeamsLoading()">
+        <article class="team-card" *ngFor="let team of teams(); trackBy: trackByTeamId">
+          <div class="team-card__head">
+            <div>
+              <h3 class="team-card__title">{{ team.name }}</h3>
+              <p class="team-card__meta">
+                {{ team.members.length }} / {{ currentAssignment.maxTeamSize }} студентов
+              </p>
+              <p class="team-card__captain" *ngIf="team.captain">
+                Капитан: {{ team.captain.lastName }} {{ team.captain.firstName }}
+              </p>
+            </div>
+
+            <div class="team-card__actions">
+              <span
+                class="team-card__capacity"
+                [class.team-card__capacity--full]="isTeamFull(team, currentAssignment)"
+              >
+                {{ isTeamFull(team, currentAssignment) ? 'Заполнена' : 'Есть места' }}
+              </span>
+
+              <button
+                *ngIf="canEditManualTeams(currentAssignment) && !isTeamFull(team, currentAssignment)"
+                type="button"
+                class="small-primary-btn"
+                (click)="openAddMembersModal(team, currentAssignment)"
+              >
+                Добавить участников
+              </button>
+            </div>
+          </div>
+
+          <div class="team-members" *ngIf="team.members.length; else emptyTeam">
+            <div
+              class="team-member"
+              *ngFor="let member of team.members; trackBy: trackByMemberId"
+            >
+              <div class="team-member__avatar">
+                {{ member.firstName[0] }}{{ member.lastName[0] }}
+              </div>
+
+              <div class="team-member__info">
+                <div class="team-member__name">
+                  {{ member.lastName }} {{ member.firstName }}
+                </div>
+                <div class="team-member__email">{{ member.email }}</div>
+              </div>
+
+              <button
+                *ngIf="canEditManualTeams(currentAssignment)"
+                type="button"
+                class="small-danger-btn"
+                (click)="removeStudentFromTeam(team, member)"
+                [disabled]="!!processingMemberKey()"
+              >
+                Удалить
+              </button>
+            </div>
+          </div>
+
+          <ng-template #emptyTeam>
+            <div class="empty-card empty-card--inside">В команде пока нет студентов.</div>
+          </ng-template>
+        </article>
+
+        <div class="empty-card" *ngIf="!teams().length">
+          {{
+            canEditManualTeams(currentAssignment)
+              ? 'Команд пока нет. Создайте первую команду, чтобы начать распределение.'
+              : 'Команд пока нет.'
+          }}
+        </div>
+      </div>
+    </section>
+
+    <div
+      class="team-modal-backdrop"
+      *ngIf="isAddMembersModalOpen() && selectedTeamForMembers() as selectedTeam"
+      (click)="closeAddMembersModal()"
+    >
+      <section class="team-modal team-modal--compact" (click)="$event.stopPropagation()">
+        <div class="team-modal__head">
+          <div>
+            <span class="team-modal__eyebrow">Участники</span>
+            <h2 class="team-modal__title">Добавить участников</h2>
+            <p class="team-modal__subtitle">
+              {{ selectedTeam.name }}:
+              {{ selectedTeam.members.length }} / {{ currentAssignment.maxTeamSize }} студентов
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="team-modal__close"
+            aria-label="Закрыть"
+            (click)="closeAddMembersModal()"
+            [disabled]="!!processingMemberKey()"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="team-modal__error" *ngIf="teamsError()">
+          {{ teamsError() }}
+        </div>
+
+        <div class="team-picker-panel">
+          <div class="team-picker-panel__head">
+            <h3>Доступные студенты</h3>
+            <p>Выберите студента, которого нужно добавить в команду.</p>
+          </div>
+
+          <div class="team-modal__students-list" *ngIf="availableStudents().length; else noStudentsToAdd">
+            <button
+              type="button"
+              class="team-modal-student"
+              *ngFor="let student of availableStudents(); trackBy: trackByStudentId"
+              (click)="addStudentToTeam(selectedTeam, student)"
+              [disabled]="!!processingMemberKey() || isTeamFull(selectedTeam, currentAssignment)"
+            >
+              <span class="team-member__avatar">
+                {{ student.firstName[0] }}{{ student.lastName[0] }}
+              </span>
+
+              <span class="team-modal-student__content">
+                <span class="team-modal-student__name">
+                  {{ student.lastName }} {{ student.firstName }}
+                </span>
+                <span class="team-modal-student__email">{{ student.email }}</span>
+              </span>
+
+              <span class="team-modal-student__state">
+                {{
+                  processingMemberKey() === selectedTeam.id + ':' + student.id + ':add'
+                    ? 'Добавляем...'
+                    : 'Добавить'
+                }}
+              </span>
+            </button>
+          </div>
+
+          <ng-template #noStudentsToAdd>
+            <div class="empty-card empty-card--inside">Нет доступных студентов для добавления.</div>
+          </ng-template>
+        </div>
+      </section>
+    </div>
+
+    <div
+      class="team-modal-backdrop"
+      *ngIf="isCreateTeamModalOpen()"
+      (click)="closeCreateTeamModal()"
+    >
+      <section class="team-modal" (click)="$event.stopPropagation()">
+        <div class="team-modal__head">
+          <div>
+            <span class="team-modal__eyebrow">Команда</span>
+            <h2 class="team-modal__title">Создать команду</h2>
+            <p class="team-modal__subtitle">
+              Укажите название и выберите студентов. Капитан будет добавлен в состав команды.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="team-modal__close"
+            aria-label="Закрыть"
+            (click)="closeCreateTeamModal()"
+            [disabled]="isCreatingTeam()"
+          >
+            ×
+          </button>
+        </div>
+
+        <form class="team-modal__form" [formGroup]="createTeamForm" (ngSubmit)="createTeam()">
+          <label class="team-modal__field">
+            <span>Название команды</span>
+            <input type="text" formControlName="name" placeholder="Например: Команда 1" />
+          </label>
+
+          <div
+            class="field-error"
+            *ngIf="createTeamForm.controls.name.touched && createTeamForm.controls.name.invalid"
+          >
+            Введите название команды
+          </div>
+
+          <div class="team-modal__students">
+            <div class="team-modal__students-head">
+              <div>
+                <span>Состав команды</span>
+                <p>Сначала выберите капитана и участников, затем создайте команду.</p>
+              </div>
+
+              <strong>{{ selectedTeamStudentIds().length }} / {{ currentAssignment.maxTeamSize }}</strong>
+            </div>
+
+            <div class="team-compose">
+              <div class="team-compose__slot">
+                <div>
+                  <span class="team-compose__label">Капитан</span>
+                  <div class="selected-person" *ngIf="selectedCaptain(); else noCaptain">
+                    <span class="team-member__avatar">
+                      {{ selectedCaptain()?.firstName?.[0] }}{{ selectedCaptain()?.lastName?.[0] }}
+                    </span>
+                    <span>
+                      <strong>{{ selectedCaptain()?.lastName }} {{ selectedCaptain()?.firstName }}</strong>
+                      <small>{{ selectedCaptain()?.email }}</small>
+                    </span>
+                  </div>
+                  <ng-template #noCaptain>
+                    <strong>Не выбран</strong>
+                  </ng-template>
+                </div>
+
+                <button type="button" class="secondary-action-btn" (click)="openCaptainPicker()">
+                  {{ selectedCaptain() ? 'Изменить капитана' : 'Добавить капитана' }}
+                </button>
+              </div>
+
+              <div class="team-compose__slot">
+                <div>
+                  <span class="team-compose__label">Участники</span>
+                  <strong>{{ selectedTeamStudents().length }} выбрано</strong>
+                </div>
+
+                <button type="button" class="secondary-action-btn" (click)="openMembersPicker()">
+                  Добавить участников
+                </button>
+              </div>
+            </div>
+
+            <div class="selected-members" *ngIf="selectedTeamStudents().length">
+              <div
+                class="selected-member-row"
+                *ngFor="let student of selectedTeamStudents(); trackBy: trackByStudentId"
+              >
+                <span class="team-member__avatar">
+                  {{ student.firstName[0] }}{{ student.lastName[0] }}
+                </span>
+                <span>
+                  <strong>{{ student.lastName }} {{ student.firstName }}</strong>
+                  <small>{{ student.email }}</small>
+                </span>
+              </div>
+            </div>
+
+            <div class="team-modal__error" *ngIf="teamModalError()">
+              {{ teamModalError() }}
+            </div>
+
+            <ng-container *ngIf="teamPickerMode() as pickerMode">
+              <div class="team-picker-panel">
+                <div class="team-picker-panel__head">
+                  <h3>
+                    {{ pickerMode === 'captain' ? 'Выберите капитана' : 'Выберите участников' }}
+                  </h3>
+                  <p>
+                    {{
+                      pickerMode === 'captain'
+                        ? 'Капитан автоматически попадет в состав команды.'
+                        : 'Можно выбрать несколько студентов.'
+                    }}
+                  </p>
+                </div>
+
+                <div class="team-modal__students-list" *ngIf="availableStudents().length; else emptyCreateTeamStudents">
+                  <button
+                    type="button"
+                    class="team-modal-student"
+                    *ngFor="let student of availableStudents(); trackBy: trackByStudentId"
+                    [class.team-modal-student--selected]="isStudentSelected(student.id)"
+                    [class.team-modal-student--captain]="createTeamForm.controls.captainId.getRawValue() === student.id"
+                    (click)="pickerMode === 'captain' ? setCaptain(student.id) : toggleTeamStudent(student, currentAssignment.maxTeamSize)"
+                  >
+                  <span class="team-member__avatar">
+                    {{ student.firstName[0] }}{{ student.lastName[0] }}
+                  </span>
+
+                  <span class="team-modal-student__content">
+                    <span class="team-modal-student__name">
+                      {{ student.lastName }} {{ student.firstName }}
+                    </span>
+                    <span class="team-modal-student__email">{{ student.email }}</span>
+                  </span>
+
+                    <span class="team-modal-student__state" *ngIf="createTeamForm.controls.captainId.getRawValue() === student.id">
+                      Капитан
+                    </span>
+                    <span class="team-modal-student__state" *ngIf="pickerMode === 'members' && isStudentSelected(student.id) && createTeamForm.controls.captainId.getRawValue() !== student.id">
+                      Выбран
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </ng-container>
+
+            <ng-template #emptyCreateTeamStudents>
+              <div class="empty-card empty-card--inside">Нет доступных студентов для новой команды.</div>
+            </ng-template>
+          </div>
+
+          <div class="team-modal__actions">
+            <button
+              type="button"
+              class="secondary-action-btn"
+              (click)="closeCreateTeamModal()"
+              [disabled]="isCreatingTeam()"
+            >
+              Отмена
+            </button>
+
+            <button type="submit" class="primary-btn" [disabled]="isCreatingTeam()">
+              {{ isCreatingTeam() ? 'Создаем...' : 'Создать команду' }}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
 
     <section class="comments-card">
       <div class="section-header">
