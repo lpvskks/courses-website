@@ -1,16 +1,39 @@
 <section class="course-users-page">
   <div class="course-users-page__topbar">
-    <button type="button" class="back-btn" (click)="back()">← Назад к курсу</button>
+    <button type="button" class="back-btn" (click)="back()">Назад к курсу</button>
   </div>
 
   <section class="course-users-hero">
     <div>
       <h1 class="course-users-hero__title">Пользователи курса</h1>
-      <p class="course-users-hero__subtitle">Управление преподавателями и студентами курса</p>
+      <p class="course-users-hero__subtitle">Преподаватели и студенты курса.</p>
     </div>
+
+    <button
+      *ngIf="canManageStudents()"
+      type="button"
+      class="primary-btn"
+      (click)="openAddStudentModal()"
+    >
+      Добавить студента
+    </button>
   </section>
 
-  <ng-container>
+  <div class="banner banner--error" *ngIf="loadError()">
+    {{ loadError() }}
+  </div>
+
+  <div class="banner banner--error" *ngIf="actionError()">
+    {{ actionError() }}
+  </div>
+
+  <div class="banner banner--success" *ngIf="successMessage()">
+    {{ successMessage() }}
+  </div>
+
+  <div class="loading-card" *ngIf="isLoading()">Загружаем пользователей курса...</div>
+
+  <ng-container *ngIf="!isLoading()">
     <div class="users-layout">
       <section class="users-block">
         <div class="users-block__header">
@@ -27,7 +50,7 @@
                 <div class="user-card__headline">
                   <h3 class="user-card__name">{{ teacher.lastName }} {{ teacher.firstName }}</h3>
 
-                  <span *ngIf="teacher.role === 'Admin'" class="status-badge"> Админ </span>
+                  <span *ngIf="teacher.role === 'Admin'" class="status-badge">Админ</span>
                 </div>
 
                 <p class="user-card__email">{{ teacher.email }}</p>
@@ -41,7 +64,7 @@
                 (click)="removeTeacher(teacher)"
                 [disabled]="processingTeacherId() === teacher.id"
               >
-                {{ processingTeacherId() === teacher.id ? 'Снятие...' : 'Снять с должности' }}
+                {{ processingTeacherId() === teacher.id ? 'Снимаем...' : 'Снять с должности' }}
               </button>
             </div>
           </article>
@@ -88,13 +111,13 @@
               >
                 {{
                   processingTeacherId() === student.id
-                    ? 'Назначение...'
+                    ? 'Назначаем...'
                     : 'Назначить преподавателем'
                 }}
               </button>
 
               <button
-                *ngIf="isAdmin() || isTeacher()"
+                *ngIf="canManageStudents()"
                 type="button"
                 class="secondary-btn"
                 (click)="toggleStudentBlock(student)"
@@ -103,8 +126,8 @@
                 {{
                   processingStudentId() === student.id
                     ? student.isBlocked
-                      ? 'Разблокировка...'
-                      : 'Блокировка...'
+                      ? 'Возвращаем...'
+                      : 'Удаляем...'
                     : student.isBlocked
                       ? 'Вернуть на курс'
                       : 'Удалить из курса'
@@ -121,3 +144,94 @@
     </div>
   </ng-container>
 </section>
+
+<div class="student-modal-backdrop" *ngIf="isAddStudentModalOpen()" (click)="closeAddStudentModal()">
+  <section class="student-modal" (click)="$event.stopPropagation()">
+    <div class="student-modal__head">
+      <div>
+        <h2 class="student-modal__title">Добавить студента на курс</h2>
+        <p class="student-modal__subtitle">Найдите пользователя и выберите его из списка.</p>
+      </div>
+
+      <button
+        type="button"
+        class="student-modal__close"
+        aria-label="Закрыть"
+        (click)="closeAddStudentModal()"
+        [disabled]="!!addingStudentId()"
+      >
+        ×
+      </button>
+    </div>
+
+    <form class="student-modal__search" [formGroup]="studentSearchForm" (ngSubmit)="searchStudents()">
+      <input
+        class="student-modal__input"
+        type="text"
+        formControlName="search"
+        placeholder="Поиск по имени или email"
+      />
+
+      <button type="submit" class="primary-btn" [disabled]="isAllStudentsLoading()">
+        Найти
+      </button>
+    </form>
+
+    <div class="banner banner--error" *ngIf="allStudentsError()">
+      {{ allStudentsError() }}
+    </div>
+
+    <div class="loading-card" *ngIf="isAllStudentsLoading()">Загружаем студентов...</div>
+
+    <div class="student-picker-list" *ngIf="!isAllStudentsLoading() && availableStudents().length">
+      <article
+        class="user-card"
+        *ngFor="let student of availableStudents(); trackBy: trackByUserId"
+      >
+        <div class="user-card__info">
+          <div class="user-avatar">{{ student.firstName[0] }}{{ student.lastName[0] }}</div>
+
+          <div>
+            <h3 class="user-card__name">{{ student.lastName }} {{ student.firstName }}</h3>
+            <p class="user-card__email">{{ student.email }}</p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="primary-btn"
+          (click)="addStudentToCourse(student)"
+          [disabled]="!!addingStudentId()"
+        >
+          {{ addingStudentId() === student.id ? 'Добавляем...' : 'Добавить' }}
+        </button>
+      </article>
+    </div>
+
+    <div class="empty-card" *ngIf="!isAllStudentsLoading() && !availableStudents().length">
+      Подходящих студентов не найдено.
+    </div>
+
+    <div class="student-modal__pagination" *ngIf="allStudentsTotalPages() > 1">
+      <button
+        type="button"
+        class="secondary-btn"
+        (click)="goToPreviousStudentsPage()"
+        [disabled]="allStudentsPage() === 1 || isAllStudentsLoading()"
+      >
+        Назад
+      </button>
+
+      <span>{{ allStudentsPage() }} / {{ allStudentsTotalPages() }}</span>
+
+      <button
+        type="button"
+        class="secondary-btn"
+        (click)="goToNextStudentsPage()"
+        [disabled]="allStudentsPage() === allStudentsTotalPages() || isAllStudentsLoading()"
+      >
+        Вперед
+      </button>
+    </div>
+  </section>
+</div>

@@ -267,7 +267,7 @@ export class CourseDetailsComponent implements OnInit {
   openCourseUsers(): void {
     const course = this.course();
 
-    if (!course || !this.isTeacher()) {
+    if (!course || (!this.isAdmin() && !this.isTeacher())) {
       return;
     }
 
