@@ -1,4 +1,4 @@
-<article
+﻿<article
   class="assignment-row"
   [class.assignment-row--unavailable]="isUnavailableForStudent"
   role="button"
@@ -36,7 +36,7 @@
     </p>
 
     <div class="assignment-row__locked-message" *ngIf="isUnavailableForStudent">
-      Откроется {{ assignment.startsAtUtc | date: 'dd.MM.yyyy HH:mm' }}
+      Откроется {{ opensAtUtc | date: 'dd.MM.yyyy HH:mm' }}
     </div>
   </div>
 
@@ -44,7 +44,7 @@
     <div class="assignment-meta">
       <span class="assignment-meta__label">Начало</span>
       <span class="assignment-meta__value">
-        {{ assignment.startsAtUtc | date: 'dd.MM.yyyy HH:mm' }}
+        {{ opensAtUtc | date: 'dd.MM.yyyy HH:mm' }}
       </span>
     </div>
 
@@ -56,3 +56,5 @@
     </div>
   </div>
 </article>
+
+

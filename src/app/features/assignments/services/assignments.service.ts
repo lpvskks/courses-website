@@ -77,6 +77,16 @@ export interface CaptainTeam {
   members: CaptainTeamMemberSubmissions[];
 }
 
+export interface AssignmentDraftState {
+  isStarted: boolean;
+  isCompleted: boolean;
+  currentCaptainUserId: string | null;
+  startedAtUtc: string | null;
+  completedAtUtc: string | null;
+  teams: AssignmentTeam[];
+  availableStudents: AssignmentTeamStudent[];
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -110,6 +120,14 @@ export class AssignmentsService {
     return this.http.delete<void>(`${this.baseUrl}/${assignmentId}/captains/self`);
   }
 
+  getAssignmentCaptains(assignmentId: string): Observable<AssignmentTeamMember[]> {
+    return this.http.get<AssignmentTeamMember[]>(`${this.baseUrl}/${assignmentId}/captains`);
+  }
+
+  removeCaptain(assignmentId: string, studentId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${assignmentId}/captains/${studentId}`);
+  }
+
   createComment(assignmentId: string, payload: { text: string }): Observable<AssignmentComment> {
     return this.http.post<AssignmentComment>(`${this.baseUrl}/${assignmentId}/comments`, payload);
   }
@@ -135,6 +153,21 @@ export class AssignmentsService {
   runRandomDistribution(assignmentId: string): Observable<AssignmentTeam[]> {
     return this.http.post<AssignmentTeam[]>(
       `${this.baseUrl}/${assignmentId}/teams/random-distribution`,
+      {},
+    );
+  }
+
+  getDraftState(assignmentId: string): Observable<AssignmentDraftState> {
+    return this.http.get<AssignmentDraftState>(`${this.baseUrl}/${assignmentId}/teams/draft`);
+  }
+
+  startDraft(assignmentId: string): Observable<AssignmentDraftState> {
+    return this.http.post<AssignmentDraftState>(`${this.baseUrl}/${assignmentId}/teams/draft/start`, {});
+  }
+
+  pickDraftStudent(assignmentId: string, studentId: string): Observable<AssignmentDraftState> {
+    return this.http.post<AssignmentDraftState>(
+      `${this.baseUrl}/${assignmentId}/teams/draft/pick/${studentId}`,
       {},
     );
   }

@@ -44,6 +44,10 @@ export class AssignmentCardComponent {
     return '';
   }
 
+  get opensAtUtc(): string {
+    return this.assignment.teamFormationEndsAtUtc || this.assignment.startsAtUtc;
+  }
+
   onOpen(): void {
     this.open.emit(this.assignment.id);
   }

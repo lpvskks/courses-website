@@ -47,6 +47,30 @@
         </div>
       </div>
 
+      <div
+        class="student-stage-card"
+        *ngIf="canViewCaptainDraft(currentAssignment) && isStudent()"
+      >
+        <div>
+          <span class="student-stage-card__eyebrow">Драфт капитанов</span>
+          <h2 class="student-stage-card__title">
+            {{ isMyDraftTurn() ? 'Ваш ход' : 'Текущий этап' }}
+          </h2>
+          <p class="student-stage-card__text">{{ getDraftStudentStatusText() }}</p>
+        </div>
+
+        <div class="student-stage-card__dates">
+          <span>
+            Выбор капитанов до
+            <strong>{{ currentAssignment.captainSelectionEndsAtUtc | date: 'dd.MM.yyyy HH:mm' }}</strong>
+          </span>
+          <span>
+            Формирование до
+            <strong>{{ currentAssignment.teamFormationEndsAtUtc | date: 'dd.MM.yyyy HH:mm' }}</strong>
+          </span>
+        </div>
+      </div>
+
       <div class="captain-panel" *ngIf="shouldShowCaptainControls(currentAssignment)">
         <div class="captain-panel__content">
           <span class="captain-panel__label">Капитан команды</span>
@@ -54,11 +78,7 @@
             Загружаем статус...
           </span>
           <span class="captain-panel__status" *ngIf="!isCaptainInfoLoading() && captainInfo()">
-            {{
-              captainInfo()?.isCaptain
-                ? 'Вы капитан команды'
-                : 'Вы пока не капитан команды'
-            }}
+            {{ getCaptainPanelStatus() }}
           </span>
         </div>
 
@@ -69,14 +89,130 @@
           (click)="toggleCaptainRole()"
           [disabled]="isCaptainActionLoading()"
         >
-          {{
-            isCaptainActionLoading()
-              ? 'Сохраняем...'
-              : captainInfo()?.isCaptain
-                ? 'Снять себя с роли капитана'
-                : 'Назначить себя капитаном'
-          }}
+          {{ getCaptainActionLabel() }}
         </button>
+      </div>
+
+      <div class="draft-unavailable-board" *ngIf="canViewCaptainDraft(currentAssignment)">
+        <div *ngIf="draftError()" class="banner banner--error">
+          {{ draftError() }}
+        </div>
+
+        <div *ngIf="draftSuccess()" class="banner banner--success">
+          {{ draftSuccess() }}
+        </div>
+
+        <div class="loading-card" *ngIf="isDraftLoading()">Загружаем драфт...</div>
+
+        <div class="draft-board" *ngIf="!isDraftLoading()">
+          <section class="draft-column draft-column--status">
+            <div class="draft-column__head">
+              <h3>Драфт</h3>
+            </div>
+
+            <div class="draft-status-card">
+              <span>Статус</span>
+              <strong>
+                {{
+                  draftState()?.isCompleted
+                    ? 'завершен'
+                    : draftState()?.isStarted
+                      ? 'идет'
+                      : 'не запущен'
+                }}
+              </strong>
+            </div>
+
+            <div class="draft-status-card" *ngIf="getCurrentDraftCaptain() as currentCaptain">
+              <span>Сейчас выбирает</span>
+              <strong>{{ currentCaptain.lastName }} {{ currentCaptain.firstName }}</strong>
+            </div>
+          </section>
+
+          <section class="draft-column">
+            <div class="draft-column__head">
+              <h3>Свободные студенты</h3>
+              <span>{{ draftState()?.availableStudents?.length ?? 0 }}</span>
+            </div>
+
+            <div
+              class="team-members"
+              *ngIf="draftState()?.availableStudents?.length; else noUnavailableDraftStudents"
+            >
+              <div
+                class="team-member"
+                *ngFor="let student of draftState()?.availableStudents; trackBy: trackByStudentId"
+              >
+                <div class="team-member__avatar">
+                  {{ student.firstName[0] }}{{ student.lastName[0] }}
+                </div>
+
+                <div class="team-member__info">
+                  <div class="team-member__name">{{ student.lastName }} {{ student.firstName }}</div>
+                  <div class="team-member__email">{{ student.email }}</div>
+                </div>
+
+                <button
+                  *ngIf="canPickDraftStudent(student, currentAssignment)"
+                  type="button"
+                  class="small-primary-btn"
+                  (click)="pickDraftStudent(student)"
+                  [disabled]="!!draftActionKey()"
+                >
+                  {{
+                    draftActionKey() === 'draft:pick:' + student.id
+                      ? 'Выбираем...'
+                      : 'Выбрать'
+                  }}
+                </button>
+              </div>
+            </div>
+
+            <ng-template #noUnavailableDraftStudents>
+              <div class="empty-card empty-card--inside">Свободных студентов нет.</div>
+            </ng-template>
+          </section>
+
+          <section class="draft-column draft-column--teams">
+            <div class="draft-column__head">
+              <h3>Команды</h3>
+              <span>{{ teams().length }}</span>
+            </div>
+
+            <div class="draft-teams-list" *ngIf="teams().length; else noUnavailableDraftTeams">
+              <article class="team-card" *ngFor="let team of teams(); trackBy: trackByTeamId">
+                <div class="team-card__head">
+                  <div>
+                    <h3 class="team-card__title">{{ team.name }}</h3>
+                    <p class="team-card__meta">
+                      {{ team.members.length }} / {{ currentAssignment.maxTeamSize }} студентов
+                    </p>
+                    <p class="team-card__captain" *ngIf="team.captain">
+                      Капитан: {{ team.captain.lastName }} {{ team.captain.firstName }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="team-members" *ngIf="team.members.length">
+                  <div class="team-member" *ngFor="let member of team.members; trackBy: trackByMemberId">
+                    <div class="team-member__avatar">
+                      {{ member.firstName[0] }}{{ member.lastName[0] }}
+                    </div>
+
+                    <div class="team-member__info">
+                      <div class="team-member__name">{{ member.lastName }} {{ member.firstName }}</div>
+                      <div class="team-member__email">{{ member.email }}</div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <ng-template #noUnavailableDraftTeams>
+              <div class="empty-card empty-card--inside">Команды появятся после запуска драфта.</div>
+            </ng-template>
+          </section>
+        </div>
       </div>
     </ng-container>
 
@@ -119,11 +255,7 @@
                 Загружаем статус...
               </span>
               <span class="captain-panel__status" *ngIf="!isCaptainInfoLoading() && captainInfo()">
-                {{
-                  captainInfo()?.isCaptain
-                    ? 'Вы капитан команды'
-                    : 'Вы пока не капитан команды'
-                }}
+                {{ getCaptainPanelStatus() }}
               </span>
             </div>
 
@@ -134,13 +266,7 @@
               (click)="toggleCaptainRole()"
               [disabled]="isCaptainActionLoading()"
             >
-              {{
-                isCaptainActionLoading()
-                  ? 'Сохраняем...'
-                  : captainInfo()?.isCaptain
-                    ? 'Снять себя с роли капитана'
-                    : 'Назначить себя капитаном'
-              }}
+              {{ getCaptainActionLabel() }}
             </button>
           </div>
 
@@ -632,7 +758,7 @@
         </div>
       </div>
 
-      <div class="banner banner--info" *ngIf="!hasAssignmentStarted(currentAssignment)">
+      <div class="banner banner--info" *ngIf="isBeforeTeamFormationStart(currentAssignment)">
         Старт формирования команд:
         {{ getTeamFormationStartsAt(currentAssignment) | date: 'dd.MM.yyyy HH:mm' }}
       </div>
@@ -747,7 +873,7 @@
         </div>
       </div>
 
-      <div class="banner banner--info" *ngIf="!hasAssignmentStarted(currentAssignment)">
+      <div class="banner banner--info" *ngIf="isBeforeTeamFormationStart(currentAssignment)">
         Вступление в команды начнется:
         {{ getTeamFormationStartsAt(currentAssignment) | date: 'dd.MM.yyyy HH:mm' }}
       </div>
@@ -786,7 +912,7 @@
               </span>
 
               <span class="team-card__self-status" *ngIf="isMyTeam(team)">
-                {{ captainInfo()?.isCaptain ? 'Вы капитан' : 'Вы в команде' }}
+                {{ getCaptainPanelStatus() }}
               </span>
 
               <button
@@ -841,6 +967,411 @@
           Команды появятся после выбора капитанов.
         </div>
       </div>
+    </section>
+
+    <section class="teams-card" *ngIf="canViewCaptainDraft(currentAssignment)">
+      <div class="section-header teams-card__header">
+        <div>
+          <h2 class="section-title">Формирование команд</h2>
+          <p class="section-subtitle">
+            Режим: драфт капитанов. Капитаны по очереди выбирают участников в свои команды.
+          </p>
+        </div>
+
+        <div class="teams-card__actions">
+          <button
+            *ngIf="canStartCaptainDraft(currentAssignment)"
+            type="button"
+            class="primary-btn"
+            (click)="startCaptainDraft()"
+            [disabled]="!!draftActionKey()"
+          >
+            {{ draftActionKey() === 'draft:start' ? 'Запускаем...' : 'Запустить драфт' }}
+          </button>
+
+          <button
+            *ngIf="canLockDraftTeams(currentAssignment)"
+            type="button"
+            class="secondary-action-btn"
+            (click)="lockDraftTeams()"
+            [disabled]="!!draftActionKey()"
+          >
+            {{ draftActionKey() === 'draft:lock' ? 'Фиксируем...' : 'Зафиксировать состав' }}
+          </button>
+
+          <span class="section-count">{{ teams().length }}</span>
+        </div>
+      </div>
+
+      <div class="draft-summary">
+        <div>
+          <span>Выбор капитанов до</span>
+          <strong>{{ currentAssignment.captainSelectionEndsAtUtc | date: 'dd.MM.yyyy HH:mm' }}</strong>
+        </div>
+        <div>
+          <span>Формирование команд до</span>
+          <strong>{{ currentAssignment.teamFormationEndsAtUtc | date: 'dd.MM.yyyy HH:mm' }}</strong>
+        </div>
+        <div>
+          <span>Статус</span>
+          <strong>
+            {{
+              draftState()?.isCompleted
+                ? 'завершен'
+                : draftState()?.isStarted
+                  ? 'идет'
+                  : 'не запущен'
+            }}
+          </strong>
+        </div>
+      </div>
+
+      <div class="draft-tabs" *ngIf="false">
+        <button
+          type="button"
+          class="draft-tab"
+          [class.draft-tab--active]="draftTab() === 'captains'"
+          (click)="setDraftTab('captains')"
+        >
+          Капитаны
+        </button>
+        <button
+          type="button"
+          class="draft-tab"
+          [class.draft-tab--active]="draftTab() === 'draft'"
+          (click)="setDraftTab('draft')"
+        >
+          Драфт
+        </button>
+        <button
+          type="button"
+          class="draft-tab"
+          [class.draft-tab--active]="draftTab() === 'teams'"
+          (click)="setDraftTab('teams')"
+        >
+          Команды
+        </button>
+      </div>
+
+      <div class="student-stage-card" *ngIf="canStudentUseCaptainDraft(currentAssignment)">
+        <div>
+          <span class="student-stage-card__eyebrow">Драфт капитанов</span>
+          <h3 class="student-stage-card__title">
+            {{ isMyDraftTurn() ? 'Ваш ход' : 'Текущий этап' }}
+          </h3>
+          <p class="student-stage-card__text">{{ getDraftStudentStatusText() }}</p>
+        </div>
+
+        <div class="student-stage-card__dates" *ngIf="getCurrentDraftCaptain() as currentCaptain">
+          <span>
+            Сейчас выбирает
+            <strong>{{ currentCaptain.lastName }} {{ currentCaptain.firstName }}</strong>
+          </span>
+        </div>
+      </div>
+
+      <div *ngIf="draftError()" class="banner banner--error">
+        {{ draftError() }}
+      </div>
+
+      <div *ngIf="draftSuccess()" class="banner banner--success">
+        {{ draftSuccess() }}
+      </div>
+
+      <div class="loading-card" *ngIf="isDraftLoading()">Загружаем драфт...</div>
+
+      <ng-container *ngIf="!isDraftLoading()">
+        <div
+          class="draft-tab-panel"
+          *ngIf="false"
+        >
+          <section class="draft-column">
+            <div class="draft-column__head">
+              <h3>Капитаны</h3>
+              <span>{{ draftCaptains().length }}</span>
+            </div>
+
+            <div class="team-members" *ngIf="draftCaptains().length; else noDraftCaptains">
+              <div class="team-member" *ngFor="let captain of draftCaptains(); trackBy: trackByMemberId">
+                <div class="team-member__avatar">
+                  {{ captain.firstName[0] }}{{ captain.lastName[0] }}
+                </div>
+
+                <div class="team-member__info">
+                  <div class="team-member__name">{{ captain.lastName }} {{ captain.firstName }}</div>
+                  <div class="team-member__email">{{ captain.email }}</div>
+                </div>
+
+                <button
+                  type="button"
+                  class="small-danger-btn"
+                  (click)="removeDraftCaptain(captain)"
+                  [disabled]="!!draftActionKey() || draftState()?.isStarted"
+                >
+                  Удалить
+                </button>
+              </div>
+            </div>
+
+            <ng-template #noDraftCaptains>
+              <div class="empty-card empty-card--inside">Капитанов пока нет.</div>
+            </ng-template>
+          </section>
+
+          <section class="draft-column">
+            <div class="draft-column__head">
+              <h3>Доступные студенты</h3>
+              <span>{{ getAvailableCaptainStudents().length }}</span>
+            </div>
+
+            <div class="team-members" *ngIf="getAvailableCaptainStudents().length; else noCaptainStudents">
+              <div
+                class="team-member"
+                *ngFor="let student of getAvailableCaptainStudents(); trackBy: trackByStudentId"
+              >
+                <div class="team-member__avatar">
+                  {{ student.firstName[0] }}{{ student.lastName[0] }}
+                </div>
+
+                <div class="team-member__info">
+                  <div class="team-member__name">{{ student.lastName }} {{ student.firstName }}</div>
+                  <div class="team-member__email">{{ student.email }}</div>
+                </div>
+
+                <button
+                  type="button"
+                  class="small-primary-btn"
+                  (click)="assignDraftCaptain(student)"
+                  [disabled]="!!draftActionKey() || draftState()?.isStarted"
+                >
+                  {{
+                    draftActionKey() === 'captain:add:' + student.id
+                      ? 'Назначаем...'
+                      : 'Назначить капитаном'
+                  }}
+                </button>
+              </div>
+            </div>
+
+            <ng-template #noCaptainStudents>
+              <div class="empty-card empty-card--inside">Нет доступных студентов.</div>
+            </ng-template>
+          </section>
+        </div>
+
+        <div
+          class="draft-board"
+          *ngIf="
+            canStudentUseCaptainDraft(currentAssignment)
+          "
+        >
+          <section class="draft-column draft-column--status">
+            <div class="draft-column__head">
+              <h3>Драфт капитанов</h3>
+            </div>
+
+            <div class="draft-status-card">
+              <span>Статус</span>
+              <strong>
+                {{
+                  draftState()?.isCompleted
+                    ? 'завершен'
+                    : draftState()?.isStarted
+                      ? 'идет'
+                      : 'не запущен'
+                }}
+              </strong>
+            </div>
+
+            <div class="draft-status-card" *ngIf="getCurrentDraftCaptain() as currentCaptain">
+              <span>Сейчас выбирает</span>
+              <strong>{{ currentCaptain.lastName }} {{ currentCaptain.firstName }}</strong>
+            </div>
+
+            <div class="draft-status-card">
+              <span>Капитанов</span>
+              <strong>{{ draftCaptains().length }}</strong>
+            </div>
+
+            <div class="draft-status-card">
+              <span>Свободных студентов</span>
+              <strong>{{ draftState()?.availableStudents?.length ?? 0 }}</strong>
+            </div>
+
+            <button
+              *ngIf="canStartCaptainDraft(currentAssignment)"
+              type="button"
+              class="primary-btn"
+              (click)="startCaptainDraft()"
+              [disabled]="!!draftActionKey()"
+            >
+              {{ draftActionKey() === 'draft:start' ? 'Запускаем...' : 'Запустить драфт' }}
+            </button>
+
+            <button
+              *ngIf="canLockDraftTeams(currentAssignment)"
+              type="button"
+              class="secondary-action-btn"
+              (click)="lockDraftTeams()"
+              [disabled]="!!draftActionKey()"
+            >
+              {{ draftActionKey() === 'draft:lock' ? 'Фиксируем...' : 'Зафиксировать состав' }}
+            </button>
+          </section>
+
+          <section class="draft-column">
+            <div class="draft-column__head">
+              <h3>Свободные студенты</h3>
+              <span>{{ draftState()?.availableStudents?.length ?? 0 }}</span>
+            </div>
+
+            <div
+              class="team-members"
+              *ngIf="draftState()?.availableStudents?.length; else noDraftAvailableStudents"
+            >
+              <div
+                class="team-member"
+                *ngFor="let student of draftState()?.availableStudents; trackBy: trackByStudentId"
+              >
+                <div class="team-member__avatar">
+                  {{ student.firstName[0] }}{{ student.lastName[0] }}
+                </div>
+
+                <div class="team-member__info">
+                  <div class="team-member__name">{{ student.lastName }} {{ student.firstName }}</div>
+                  <div class="team-member__email">{{ student.email }}</div>
+                </div>
+
+                <button
+                  *ngIf="canPickDraftStudent(student, currentAssignment)"
+                  type="button"
+                  class="small-primary-btn"
+                  (click)="pickDraftStudent(student)"
+                  [disabled]="!!draftActionKey()"
+                >
+                  {{
+                    draftActionKey() === 'draft:pick:' + student.id
+                      ? 'Выбираем...'
+                      : 'Выбрать'
+                  }}
+                </button>
+              </div>
+            </div>
+
+            <ng-template #noDraftAvailableStudents>
+              <div class="empty-card empty-card--inside">Свободных студентов нет.</div>
+            </ng-template>
+          </section>
+
+          <section class="draft-column draft-column--teams">
+            <div class="draft-column__head">
+              <h3>Команды</h3>
+              <span>{{ teams().length }}</span>
+            </div>
+
+            <div class="draft-teams-list" *ngIf="teams().length; else noDraftTeams">
+              <article class="team-card" *ngFor="let team of teams(); trackBy: trackByTeamId">
+                <div class="team-card__head">
+                  <div>
+                    <h3 class="team-card__title">{{ team.name }}</h3>
+                    <p class="team-card__meta">
+                      {{ team.members.length }} / {{ currentAssignment.maxTeamSize }} студентов
+                    </p>
+                    <p class="team-card__captain" *ngIf="team.captain">
+                      Капитан: {{ team.captain.lastName }} {{ team.captain.firstName }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="team-members" *ngIf="team.members.length">
+                  <div class="team-member" *ngFor="let member of team.members; trackBy: trackByMemberId">
+                    <div class="team-member__avatar">
+                      {{ member.firstName[0] }}{{ member.lastName[0] }}
+                    </div>
+
+                    <div class="team-member__info">
+                      <div class="team-member__name">{{ member.lastName }} {{ member.firstName }}</div>
+                      <div class="team-member__email">{{ member.email }}</div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <ng-template #noDraftTeams>
+              <div class="empty-card empty-card--inside">Команды появятся после запуска драфта.</div>
+            </ng-template>
+          </section>
+        </div>
+
+        <div
+          class="teams-list"
+          *ngIf="canManageCaptainDraft(currentAssignment)"
+        >
+          <article class="team-card" *ngFor="let team of teams(); trackBy: trackByTeamId">
+            <div class="team-card__head">
+              <div>
+                <h3 class="team-card__title">{{ team.name }}</h3>
+                <p class="team-card__meta">
+                  {{ team.members.length }} / {{ currentAssignment.maxTeamSize }} студентов
+                </p>
+                <p class="team-card__captain" *ngIf="team.captain">
+                  Капитан: {{ team.captain.lastName }} {{ team.captain.firstName }}
+                </p>
+              </div>
+
+              <div class="team-card__actions">
+                <span
+                  class="team-card__capacity"
+                  [class.team-card__capacity--full]="isTeamFull(team, currentAssignment)"
+                >
+                  {{ isTeamFull(team, currentAssignment) ? 'Заполнена' : 'Есть места' }}
+                </span>
+
+                <button
+                  *ngIf="canEditCaptainDraftTeams(currentAssignment) && !isTeamFull(team, currentAssignment)"
+                  type="button"
+                  class="small-primary-btn"
+                  (click)="openAddMembersModal(team, currentAssignment)"
+                >
+                  Добавить участников
+                </button>
+              </div>
+            </div>
+
+            <div class="team-members" *ngIf="team.members.length; else emptyCaptainDraftTeam">
+              <div class="team-member" *ngFor="let member of team.members; trackBy: trackByMemberId">
+                <div class="team-member__avatar">
+                  {{ member.firstName[0] }}{{ member.lastName[0] }}
+                </div>
+
+                <div class="team-member__info">
+                  <div class="team-member__name">{{ member.lastName }} {{ member.firstName }}</div>
+                  <div class="team-member__email">{{ member.email }}</div>
+                </div>
+
+                <button
+                  *ngIf="canEditCaptainDraftTeams(currentAssignment)"
+                  type="button"
+                  class="small-danger-btn"
+                  (click)="removeStudentFromTeam(team, member)"
+                  [disabled]="!!processingMemberKey()"
+                >
+                  Удалить
+                </button>
+              </div>
+            </div>
+
+            <ng-template #emptyCaptainDraftTeam>
+              <div class="empty-card empty-card--inside">В команде пока нет студентов.</div>
+            </ng-template>
+          </article>
+
+          <div class="empty-card" *ngIf="!teams().length">
+            Команды пока не сформированы.
+          </div>
+        </div>
+      </ng-container>
     </section>
 
     <div
