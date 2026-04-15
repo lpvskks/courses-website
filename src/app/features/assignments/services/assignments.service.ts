@@ -128,6 +128,14 @@ export class AssignmentsService {
     return this.http.delete<void>(`${this.baseUrl}/teams/${teamId}/members/${studentId}`);
   }
 
+  joinTeamSelf(teamId: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/teams/${teamId}/join-self`, {});
+  }
+
+  leaveTeamSelf(teamId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/teams/${teamId}/leave-self`);
+  }
+
   uploadAssignmentFiles(assignmentId: string, files: File[]): Observable<void> {
     const formData = new FormData();
 

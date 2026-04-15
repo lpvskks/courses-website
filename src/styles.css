@@ -106,6 +106,77 @@
   color: #64748b;
 }
 
+.team-card__self-status {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #005cbb;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.student-stage-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 18px 0;
+  padding: 18px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #f8fbff 0%, #eef5ff 100%);
+  border: 1px solid #bfdbfe;
+}
+
+.student-stage-card__eyebrow {
+  display: inline-flex;
+  margin-bottom: 8px;
+  color: #005cbb;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.student-stage-card__title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.student-stage-card__text {
+  max-width: 620px;
+  margin: 8px 0 0;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.student-stage-card__dates {
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.student-stage-card__dates span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.student-stage-card__dates strong {
+  color: #0f172a;
+  font-size: 13px;
+}
+
 .team-card__actions {
   display: flex;
   align-items: center;
@@ -568,6 +639,15 @@
 
   .team-compose {
     grid-template-columns: 1fr;
+  }
+
+  .student-stage-card {
+    flex-direction: column;
+  }
+
+  .student-stage-card__dates {
+    min-width: 0;
+    width: 100%;
   }
 
   .available-student__actions {

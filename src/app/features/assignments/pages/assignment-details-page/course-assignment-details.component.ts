@@ -60,6 +60,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   isCreateTeamModalOpen = signal(false);
   isAddMembersModalOpen = signal(false);
   isRunningRandomDistribution = signal(false);
+  processingSelfTeamId = signal<string | null>(null);
 
   loadError = signal('');
   commentsError = signal('');
@@ -179,6 +180,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
       'Задание пока недоступно. Сейчас идет выбор капитанов, и вы можете подать заявку.',
     );
     this.loadCaptainInfoIfAvailable(fallbackAssignment);
+    this.loadTeamsIfAvailable(fallbackAssignment);
 
     return true;
   }
@@ -189,6 +191,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     this.teamsError.set('');
     this.teamsSuccess.set('');
     this.processingMemberKey.set(null);
+    this.processingSelfTeamId.set(null);
     this.selectedTeamStudentIds.set([]);
     this.teamPickerMode.set(null);
     this.teamModalError.set('');
@@ -206,6 +209,11 @@ export class CourseAssignmentDetailsComponent implements OnInit {
 
     if (this.canManageRandomTeams(assignment)) {
       this.loadAssignmentTeams(assignment.id);
+      return;
+    }
+
+    if (this.canViewSelfSelectionTeams(assignment)) {
+      this.loadAssignmentTeams(assignment.id);
     }
   }
 
@@ -215,6 +223,17 @@ export class CourseAssignmentDetailsComponent implements OnInit {
 
   canManageRandomTeams(assignment: Assignment): boolean {
     return (this.isAdmin() || this.isTeacher()) && assignment.teamFormationMode === 'random_distribution';
+  }
+
+  canViewSelfSelectionTeams(assignment: Assignment): boolean {
+    return (
+      assignment.teamFormationMode === 'student_self_selection' &&
+      (this.isStudent() || this.isAdmin() || this.isTeacher())
+    );
+  }
+
+  canUseSelfSelectionTeams(assignment: Assignment): boolean {
+    return this.isStudent() && this.canViewSelfSelectionTeams(assignment) && this.isTeamFormationStageOpen(assignment);
   }
 
   canRunRandomDistribution(assignment: Assignment): boolean {
@@ -237,13 +256,15 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   }
 
   isTeamFormationStageOpen(assignment: Assignment): boolean {
-    if (!assignment.startsAtUtc || !assignment.teamFormationEndsAtUtc) {
+    const startsAt = this.getTeamFormationStartsAt(assignment);
+
+    if (!startsAt || !assignment.teamFormationEndsAtUtc) {
       return false;
     }
 
     const now = new Date().getTime();
     return (
-      now >= new Date(assignment.startsAtUtc).getTime() &&
+      now >= new Date(startsAt).getTime() &&
       now < new Date(assignment.teamFormationEndsAtUtc).getTime()
     );
   }
@@ -254,6 +275,16 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     }
 
     return new Date().getTime() >= new Date(assignment.teamFormationEndsAtUtc).getTime();
+  }
+
+  isBeforeTeamFormationStart(assignment: Assignment): boolean {
+    const startsAt = this.getTeamFormationStartsAt(assignment);
+
+    if (!startsAt) {
+      return false;
+    }
+
+    return new Date().getTime() < new Date(startsAt).getTime();
   }
 
   getTeamFormationStartsAt(assignment: Assignment): string {
@@ -552,13 +583,147 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     return team.members.length >= assignment.maxTeamSize;
   }
 
+  isMyTeam(team: AssignmentTeam): boolean {
+    return this.captainInfo()?.teamId === team.id;
+  }
+
+  canJoinSelfSelectionTeam(team: AssignmentTeam, assignment: Assignment): boolean {
+    return (
+      this.canUseSelfSelectionTeams(assignment) &&
+      !this.captainInfo()?.teamId &&
+      !this.isTeamFull(team, assignment)
+    );
+  }
+
+  canLeaveSelfSelectionTeam(team: AssignmentTeam, assignment: Assignment): boolean {
+    return (
+      this.canUseSelfSelectionTeams(assignment) &&
+      this.isMyTeam(team) &&
+      !this.captainInfo()?.isCaptain
+    );
+  }
+
+  getSelfSelectionStageTitle(assignment: Assignment): string {
+    if (this.isCaptainSelectionOpen(assignment)) {
+      return this.captainInfo()?.isCaptain
+        ? 'Вы уже капитан команды'
+        : 'Сейчас идет выбор капитанов';
+    }
+
+    if (this.isBeforeTeamFormationStart(assignment)) {
+      return 'Скоро начнется выбор команд';
+    }
+
+    if (this.isTeamFormationStageOpen(assignment)) {
+      if (this.captainInfo()?.isCaptain) {
+        return 'Вы капитан команды';
+      }
+
+      if (this.captainInfo()?.teamId) {
+        return 'Вы уже в команде';
+      }
+
+      return 'Сейчас можно вступить в команду';
+    }
+
+    if (this.hasTeamFormationEnded(assignment)) {
+      return 'Формирование команд завершено';
+    }
+
+    return 'Команды задания';
+  }
+
+  getSelfSelectionStageText(assignment: Assignment): string {
+    if (this.isCaptainSelectionOpen(assignment)) {
+      return this.captainInfo()?.isCaptain
+        ? 'После начала формирования остальные студенты смогут присоединиться к вашей команде.'
+        : 'Можно назначить себя капитаном. Позже другие студенты смогут вступить в команды капитанов.';
+    }
+
+    if (this.isBeforeTeamFormationStart(assignment)) {
+      return 'Выбор капитанов завершен. Когда начнется формирование команд, здесь появятся доступные действия.';
+    }
+
+    if (this.isTeamFormationStageOpen(assignment)) {
+      if (this.captainInfo()?.isCaptain) {
+        return 'Следите за составом команды. Другие студенты могут присоединиться, пока этап открыт.';
+      }
+
+      if (this.captainInfo()?.teamId) {
+        return 'Вы можете оставаться в этой команде или выйти из нее до завершения формирования.';
+      }
+
+      return 'Выберите подходящую команду из списка ниже и нажмите «Вступить».';
+    }
+
+    if (this.hasTeamFormationEnded(assignment)) {
+      return 'Составы команд больше нельзя менять, список доступен только для просмотра.';
+    }
+
+    return 'Здесь отображается текущий этап работы с командами.';
+  }
+
+  joinSelfSelectionTeam(team: AssignmentTeam): void {
+    const assignment = this.assignment();
+    if (!assignment || !this.canJoinSelfSelectionTeam(team, assignment) || this.processingSelfTeamId()) {
+      return;
+    }
+
+    this.teamsError.set('');
+    this.teamsSuccess.set('');
+    this.processingSelfTeamId.set(team.id);
+
+    this.assignmentsService.joinTeamSelf(team.id).subscribe({
+      next: () => {
+        this.processingSelfTeamId.set(null);
+        this.teamsSuccess.set('Вы вступили в команду');
+        this.loadCaptainInfo(assignment.id);
+        this.loadAssignmentTeams(assignment.id);
+      },
+      error: (err) => {
+        console.error(err);
+        this.processingSelfTeamId.set(null);
+        this.teamsError.set(this.getApiErrorMessage(err, 'Не удалось вступить в команду'));
+      },
+    });
+  }
+
+  leaveSelfSelectionTeam(team: AssignmentTeam): void {
+    const assignment = this.assignment();
+    if (!assignment || !this.canLeaveSelfSelectionTeam(team, assignment) || this.processingSelfTeamId()) {
+      return;
+    }
+
+    this.teamsError.set('');
+    this.teamsSuccess.set('');
+    this.processingSelfTeamId.set(team.id);
+
+    this.assignmentsService.leaveTeamSelf(team.id).subscribe({
+      next: () => {
+        this.processingSelfTeamId.set(null);
+        this.teamsSuccess.set('Вы вышли из команды');
+        this.loadCaptainInfo(assignment.id);
+        this.loadAssignmentTeams(assignment.id);
+      },
+      error: (err) => {
+        console.error(err);
+        this.processingSelfTeamId.set(null);
+        this.teamsError.set(this.getApiErrorMessage(err, 'Не удалось выйти из команды'));
+      },
+    });
+  }
+
   loadCaptainInfoIfAvailable(assignment: Assignment): void {
-    if (!this.shouldShowCaptainControls(assignment)) {
+    if (!this.shouldLoadCaptainInfo(assignment)) {
       this.captainInfo.set(null);
       return;
     }
 
     this.loadCaptainInfo(assignment.id);
+  }
+
+  shouldLoadCaptainInfo(assignment: Assignment): boolean {
+    return this.isStudent() && assignment.teamFormationMode !== 'teacher_managed';
   }
 
   loadCaptainInfo(assignmentId: string): void {
@@ -580,7 +745,19 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   }
 
   shouldShowCaptainControls(assignment: Assignment): boolean {
-    return this.isStudent() && this.isTeamFormationOpen(assignment);
+    return (
+      this.isStudent() &&
+      assignment.teamFormationMode !== 'teacher_managed' &&
+      this.isCaptainSelectionOpen(assignment)
+    );
+  }
+
+  isCaptainSelectionOpen(assignment: Assignment): boolean {
+    if (!assignment.captainSelectionEndsAtUtc) {
+      return this.isTeamFormationOpen(assignment);
+    }
+
+    return new Date().getTime() <= new Date(assignment.captainSelectionEndsAtUtc).getTime();
   }
 
   isTeamFormationOpen(assignment: Assignment): boolean {
@@ -616,6 +793,9 @@ export class CourseAssignmentDetailsComponent implements OnInit {
         );
         this.isCaptainActionLoading.set(false);
         this.loadCaptainInfo(assignment.id);
+        if (this.canViewSelfSelectionTeams(assignment)) {
+          this.loadAssignmentTeams(assignment.id);
+        }
       },
       error: (err) => {
         console.error(err);
