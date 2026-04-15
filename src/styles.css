@@ -177,6 +177,133 @@
   font-size: 13px;
 }
 
+.draft-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.draft-summary div,
+.draft-status-card {
+  padding: 14px;
+  border-radius: 16px;
+  background: #f8fbff;
+  border: 1px solid #dbeafe;
+}
+
+.draft-summary span,
+.draft-status-card span {
+  display: block;
+  margin-bottom: 5px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.draft-summary strong,
+.draft-status-card strong {
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.draft-tabs {
+  display: inline-flex;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 5px;
+  border-radius: 999px;
+  background: #eef5ff;
+  border: 1px solid #d0e2ff;
+}
+
+.draft-tab {
+  min-height: 34px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #005cbb;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.draft-tab--active {
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 6px 16px rgba(0, 92, 187, 0.1);
+}
+
+.draft-tab-panel,
+.draft-board {
+  display: grid;
+  gap: 14px;
+}
+
+.draft-tab-panel {
+  grid-template-columns: 1fr 1fr;
+}
+
+.draft-board {
+  grid-template-columns: minmax(190px, 0.7fr) minmax(240px, 1fr) minmax(300px, 1.4fr);
+}
+
+.draft-column {
+  min-width: 0;
+  padding: 16px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border: 1px solid #dbeafe;
+}
+
+.draft-column__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.draft-column__head h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.draft-column__head span {
+  min-width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef5ff;
+  color: #005cbb;
+  font-weight: 800;
+}
+
+.draft-column--status {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.draft-column--status .draft-column__head {
+  margin-bottom: 0;
+}
+
+.draft-teams-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 560px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
 .team-card__actions {
   display: flex;
   align-items: center;
@@ -619,6 +746,12 @@
 @media (max-width: 900px) {
   .available-students {
     position: static;
+  }
+
+  .draft-summary,
+  .draft-tab-panel,
+  .draft-board {
+    grid-template-columns: 1fr;
   }
 }
 

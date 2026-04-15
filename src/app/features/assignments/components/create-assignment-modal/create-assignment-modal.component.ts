@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+﻿import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -301,20 +301,15 @@ export class CreateAssignmentModalComponent {
       return true;
     }
 
-    return (
-      this.isBeforeOrEqual('captainSelectionEndsAtUtc', 'startsAtUtc') &&
-      this.isBefore('captainSelectionEndsAtUtc', 'teamFormationEndsAtUtc')
-    );
+    return this.isBefore('captainSelectionEndsAtUtc', 'teamFormationEndsAtUtc');
   }
 
   private isTeamFormationDateValid(): boolean {
-    const isAfterStart = this.isAfter('teamFormationEndsAtUtc', 'startsAtUtc');
-
     if (!this.showCaptainSelectionEndsAt()) {
-      return isAfterStart;
+      return this.isAfter('teamFormationEndsAtUtc', 'startsAtUtc');
     }
 
-    return isAfterStart && this.isAfter('teamFormationEndsAtUtc', 'captainSelectionEndsAtUtc');
+    return this.isAfter('teamFormationEndsAtUtc', 'captainSelectionEndsAtUtc');
   }
 
   private isStartsAtValid(): boolean {
@@ -386,3 +381,4 @@ type DateControlName =
   | 'teamFormationEndsAtUtc'
   | 'startsAtUtc'
   | 'deadline';
+

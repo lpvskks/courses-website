@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+﻿import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
@@ -16,11 +16,14 @@ import { Assignment } from '../../../../core/models/assigment.model';
 import { AssignmentComment } from '../../../../core/models/assignment-comment.model';
 import {
   AssignmentCaptainInfo,
+  AssignmentDraftState,
   AssignmentTeam,
   AssignmentTeamMember,
   AssignmentTeamStudent,
   AssignmentsService,
 } from '../../../assignments/services/assignments.service';
+import { ProfileService } from '../../../profile/services/profile.service';
+import { UsersService } from '../../../users/services/users.service';
 
 @Component({
   selector: 'app-course-assignment-details',
@@ -35,11 +38,14 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
   private readonly assignmentsService = inject(AssignmentsService);
+  private readonly profileService = inject(ProfileService);
+  private readonly usersService = inject(UsersService);
 
   readonly role = signal(localStorage.getItem('user_role'));
   readonly isAdmin = computed(() => this.role() === 'Admin');
   readonly isTeacher = computed(() => this.role() === 'Teacher');
   readonly isStudent = computed(() => this.role() === 'Student');
+  currentUserId = signal<string | null>(null);
 
   courseId = signal<string | null>(null);
   assignmentId = signal<string | null>(null);
@@ -49,6 +55,10 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   captainInfo = signal<AssignmentCaptainInfo | null>(null);
   teams = signal<AssignmentTeam[]>([]);
   availableStudents = signal<AssignmentTeamStudent[]>([]);
+  draftState = signal<AssignmentDraftState | null>(null);
+  draftCaptains = signal<AssignmentTeamMember[]>([]);
+  draftCourseStudents = signal<AssignmentTeamStudent[]>([]);
+  draftTab = signal<'captains' | 'draft' | 'teams'>('captains');
 
   isLoading = signal(true);
   isCommentsLoading = signal(true);
@@ -61,6 +71,8 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   isAddMembersModalOpen = signal(false);
   isRunningRandomDistribution = signal(false);
   processingSelfTeamId = signal<string | null>(null);
+  isDraftLoading = signal(false);
+  draftActionKey = signal<string | null>(null);
 
   loadError = signal('');
   commentsError = signal('');
@@ -71,6 +83,8 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   unavailableAssignmentNotice = signal('');
   teamsError = signal('');
   teamsSuccess = signal('');
+  draftError = signal('');
+  draftSuccess = signal('');
   processingMemberKey = signal<string | null>(null);
   selectedTeamStudentIds = signal<string[]>([]);
   teamPickerMode = signal<'captain' | 'members' | null>(null);
@@ -102,6 +116,8 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.loadCurrentProfile();
+
     this.route.paramMap.subscribe({
       next: (params) => {
         const courseId = params.get('courseId');
@@ -119,6 +135,17 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     });
   }
 
+  loadCurrentProfile(): void {
+    if (!localStorage.getItem('token')) {
+      return;
+    }
+
+    this.profileService.getMe().subscribe({
+      next: (profile) => this.currentUserId.set(profile.id),
+      error: (err) => console.error(err),
+    });
+  }
+
   loadPageData(assignmentId: string): void {
     this.isLoading.set(true);
     this.isCommentsLoading.set(true);
@@ -131,6 +158,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     this.captainActionSuccess.set('');
     this.unavailableAssignmentNotice.set('');
     this.resetTeamsState();
+    this.resetDraftState();
 
     forkJoin({
       assignment: this.assignmentsService.getAssignmentById(assignmentId),
@@ -201,6 +229,16 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     this.isCreateTeamModalOpen.set(false);
   }
 
+  resetDraftState(): void {
+    this.draftState.set(null);
+    this.draftCaptains.set([]);
+    this.draftCourseStudents.set([]);
+    this.draftTab.set('captains');
+    this.draftError.set('');
+    this.draftSuccess.set('');
+    this.draftActionKey.set(null);
+  }
+
   loadTeamsIfAvailable(assignment: Assignment): void {
     if (this.canManageManualTeams(assignment)) {
       this.loadManualDistribution(assignment.id);
@@ -214,6 +252,11 @@ export class CourseAssignmentDetailsComponent implements OnInit {
 
     if (this.canViewSelfSelectionTeams(assignment)) {
       this.loadAssignmentTeams(assignment.id);
+      return;
+    }
+
+    if (this.canViewCaptainDraft(assignment)) {
+      this.loadCaptainDraftBoard(assignment);
     }
   }
 
@@ -232,6 +275,21 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     );
   }
 
+  canViewCaptainDraft(assignment: Assignment): boolean {
+    return (
+      assignment.teamFormationMode === 'captain_draft' &&
+      (this.isStudent() || this.isAdmin() || this.isTeacher())
+    );
+  }
+
+  canManageCaptainDraft(assignment: Assignment): boolean {
+    return this.canViewCaptainDraft(assignment) && (this.isAdmin() || this.isTeacher());
+  }
+
+  canStudentUseCaptainDraft(assignment: Assignment): boolean {
+    return this.canViewCaptainDraft(assignment) && this.isStudent();
+  }
+
   canUseSelfSelectionTeams(assignment: Assignment): boolean {
     return this.isStudent() && this.canViewSelfSelectionTeams(assignment) && this.isTeamFormationStageOpen(assignment);
   }
@@ -239,12 +297,36 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   canRunRandomDistribution(assignment: Assignment): boolean {
     return (
       this.canManageRandomTeams(assignment) &&
-      !this.hasTeamFormationEnded(assignment)
+      this.isTeamFormationStageOpen(assignment) &&
+      !assignment.isTeamCompositionLocked
     );
   }
 
   canEditManualTeams(assignment: Assignment): boolean {
-    return this.canManageManualTeams(assignment) && !this.hasAssignmentStarted(assignment);
+    return (
+      this.canManageManualTeams(assignment) &&
+      this.isTeamFormationStageOpen(assignment) &&
+      !assignment.isTeamCompositionLocked
+    );
+  }
+
+  canEditCaptainDraftTeams(assignment: Assignment): boolean {
+    const state = this.draftState();
+
+    return (
+      this.canManageCaptainDraft(assignment) &&
+      this.isTeamFormationStageOpen(assignment) &&
+      !assignment.isTeamCompositionLocked &&
+      state?.isCompleted === true
+    );
+  }
+
+  canEditTeams(assignment: Assignment): boolean {
+    return this.canEditManualTeams(assignment) || this.canEditCaptainDraftTeams(assignment);
+  }
+
+  canCreateTeams(assignment: Assignment): boolean {
+    return this.canEditManualTeams(assignment);
   }
 
   hasAssignmentStarted(assignment: Assignment): boolean {
@@ -288,7 +370,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   }
 
   getTeamFormationStartsAt(assignment: Assignment): string {
-    return assignment.teamFormationStartsAtUtc || assignment.startsAtUtc;
+    return assignment.captainSelectionEndsAtUtc || assignment.teamFormationStartsAtUtc || assignment.startsAtUtc;
   }
 
   loadAssignmentTeams(assignmentId: string): void {
@@ -337,6 +419,306 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     });
   }
 
+  loadCaptainDraftBoard(assignment: Assignment): void {
+    this.isDraftLoading.set(true);
+    this.draftError.set('');
+
+    const requests: {
+      draftState: ReturnType<AssignmentsService['getDraftState']>;
+      captains: ReturnType<AssignmentsService['getAssignmentCaptains']>;
+      courseStudents?: ReturnType<UsersService['getCourseStudents']>;
+    } = {
+      draftState: this.assignmentsService.getDraftState(assignment.id),
+      captains: this.assignmentsService.getAssignmentCaptains(assignment.id),
+    };
+
+    if (this.canManageCaptainDraft(assignment)) {
+      requests.courseStudents = this.usersService.getCourseStudents(assignment.courseId);
+    }
+
+    forkJoin(requests).subscribe({
+      next: (response) => {
+        this.applyDraftState(response.draftState);
+        this.draftCaptains.set(response.captains);
+        this.draftCourseStudents.set(
+          (response.courseStudents ?? []).map((student) => ({
+            id: student.id,
+            firstName: student.firstName,
+            lastName: student.lastName,
+            email: student.email,
+            isBlocked: student.isBlocked ?? false,
+          })),
+        );
+        this.isDraftLoading.set(false);
+      },
+      error: (err) => {
+        console.error(err);
+        this.draftState.set(null);
+        this.draftCaptains.set([]);
+        this.draftCourseStudents.set([]);
+        this.draftError.set(this.getApiErrorMessage(err, 'Не удалось загрузить драфт капитанов'));
+        this.isDraftLoading.set(false);
+      },
+    });
+  }
+
+  applyDraftState(state: AssignmentDraftState): void {
+    this.draftState.set(state);
+    this.teams.set(state.teams);
+    this.availableStudents.set(state.availableStudents);
+  }
+
+  refreshTeamManagementData(assignment: Assignment): void {
+    if (this.canManageManualTeams(assignment)) {
+      this.loadManualDistribution(assignment.id);
+      return;
+    }
+
+    if (this.canManageCaptainDraft(assignment)) {
+      this.loadCaptainDraftBoard(assignment);
+    }
+  }
+
+  setDraftTab(tab: 'captains' | 'draft' | 'teams'): void {
+    this.draftTab.set(tab);
+  }
+
+  getAvailableCaptainStudents(): AssignmentTeamStudent[] {
+    const captainIds = new Set(this.draftCaptains().map((captain) => captain.userId));
+    return this.draftCourseStudents().filter(
+      (student) => !student.isBlocked && !captainIds.has(student.id),
+    );
+  }
+
+  assignDraftCaptain(student: AssignmentTeamStudent): void {
+    const assignment = this.assignment();
+    if (!assignment || !this.canManageCaptainDraft(assignment) || this.draftActionKey()) {
+      return;
+    }
+
+    this.draftError.set('');
+    this.draftSuccess.set('');
+    this.draftActionKey.set(`captain:add:${student.id}`);
+
+    this.assignmentsService.assignCaptain(assignment.id, student.id).subscribe({
+      next: () => {
+        this.draftActionKey.set(null);
+        this.draftSuccess.set('Капитан назначен');
+        this.loadCaptainDraftBoard(assignment);
+      },
+      error: (err) => {
+        console.error(err);
+        this.draftActionKey.set(null);
+        this.draftError.set(this.getApiErrorMessage(err, 'Не удалось назначить капитана'));
+      },
+    });
+  }
+
+  removeDraftCaptain(captain: AssignmentTeamMember): void {
+    const assignment = this.assignment();
+    if (!assignment || !this.canManageCaptainDraft(assignment) || this.draftActionKey()) {
+      return;
+    }
+
+    this.draftError.set('');
+    this.draftSuccess.set('');
+    this.draftActionKey.set(`captain:remove:${captain.userId}`);
+
+    this.assignmentsService.removeCaptain(assignment.id, captain.userId).subscribe({
+      next: () => {
+        this.draftActionKey.set(null);
+        this.draftSuccess.set('Капитан удален');
+        this.loadCaptainDraftBoard(assignment);
+      },
+      error: (err) => {
+        console.error(err);
+        this.draftActionKey.set(null);
+        this.draftError.set(this.getApiErrorMessage(err, 'Не удалось удалить капитана'));
+      },
+    });
+  }
+
+  startCaptainDraft(): void {
+    const assignment = this.assignment();
+    if (!assignment || !this.canStartCaptainDraft(assignment) || this.draftActionKey()) {
+      return;
+    }
+
+    this.draftError.set('');
+    this.draftSuccess.set('');
+    this.draftActionKey.set('draft:start');
+
+    this.assignmentsService.startDraft(assignment.id).subscribe({
+      next: (state) => {
+        this.draftActionKey.set(null);
+        this.draftSuccess.set('Драфт запущен');
+        this.applyDraftState(state);
+        this.draftTab.set('draft');
+      },
+      error: (err) => {
+        console.error(err);
+        this.draftActionKey.set(null);
+        this.draftError.set(this.getApiErrorMessage(err, 'Не удалось запустить драфт'));
+      },
+    });
+  }
+
+  pickDraftStudent(student: AssignmentTeamStudent): void {
+    const assignment = this.assignment();
+    if (!assignment || !this.canPickDraftStudent(student, assignment) || this.draftActionKey()) {
+      return;
+    }
+
+    this.draftError.set('');
+    this.draftSuccess.set('');
+    this.draftActionKey.set(`draft:pick:${student.id}`);
+
+    this.assignmentsService.pickDraftStudent(assignment.id, student.id).subscribe({
+      next: (state) => {
+        this.draftActionKey.set(null);
+        this.draftSuccess.set('Участник выбран');
+        this.applyDraftState(state);
+        this.loadCaptainInfo(assignment.id);
+      },
+      error: (err) => {
+        console.error(err);
+        this.draftActionKey.set(null);
+        this.draftError.set(this.getApiErrorMessage(err, 'Не удалось выбрать участника'));
+      },
+    });
+  }
+
+  lockDraftTeams(): void {
+    const assignment = this.assignment();
+    if (!assignment || !this.canLockDraftTeams(assignment) || this.draftActionKey()) {
+      return;
+    }
+
+    this.draftError.set('');
+    this.draftSuccess.set('');
+    this.draftActionKey.set('draft:lock');
+
+    this.assignmentsService.lockTeams(assignment.id).subscribe({
+      next: () => {
+        this.draftActionKey.set(null);
+        this.draftSuccess.set('Состав команд зафиксирован');
+        this.assignment.update((currentAssignment) =>
+          currentAssignment
+            ? {
+                ...currentAssignment,
+                isTeamCompositionLocked: true,
+                teamCompositionLockedAtUtc: new Date().toISOString(),
+              }
+            : currentAssignment,
+        );
+        this.loadCaptainDraftBoard(assignment);
+      },
+      error: (err) => {
+        console.error(err);
+        this.draftActionKey.set(null);
+        this.draftError.set(this.getApiErrorMessage(err, 'Не удалось зафиксировать состав команд'));
+      },
+    });
+  }
+
+  canStartCaptainDraft(assignment: Assignment): boolean {
+    const state = this.draftState();
+    return (
+      this.canManageCaptainDraft(assignment) &&
+      this.isTeamFormationStageOpen(assignment) &&
+      !assignment.isTeamCompositionLocked &&
+      !state?.isStarted &&
+      !state?.isCompleted
+    );
+  }
+
+  canLockDraftTeams(assignment: Assignment): boolean {
+    return (
+      this.canManageCaptainDraft(assignment) &&
+      this.isTeamFormationStageOpen(assignment) &&
+      !assignment.isTeamCompositionLocked &&
+      this.teams().length > 0
+    );
+  }
+
+  canPickDraftStudent(student: AssignmentTeamStudent, assignment: Assignment): boolean {
+    const state = this.draftState();
+    return (
+      this.canStudentUseCaptainDraft(assignment) &&
+      this.isTeamFormationStageOpen(assignment) &&
+      !assignment.isTeamCompositionLocked &&
+      !!state?.isStarted &&
+      !state.isCompleted &&
+      state.currentCaptainUserId === this.currentUserId() &&
+      state.availableStudents.some((availableStudent) => availableStudent.id === student.id)
+    );
+  }
+
+  getCurrentDraftCaptain(): AssignmentTeamMember | null {
+    const currentCaptainId = this.draftState()?.currentCaptainUserId;
+    if (!currentCaptainId) {
+      return null;
+    }
+
+    return this.draftCaptains().find((captain) => captain.userId === currentCaptainId)
+      ?? this.teams().find((team) => team.captain?.userId === currentCaptainId)?.captain
+      ?? null;
+  }
+
+  getMyDraftTeam(): AssignmentTeam | null {
+    const userId = this.currentUserId();
+    if (!userId) {
+      return null;
+    }
+
+    return this.teams().find((team) => team.members.some((member) => member.userId === userId)) ?? null;
+  }
+
+  isMyDraftTurn(): boolean {
+    return this.draftState()?.currentCaptainUserId === this.currentUserId();
+  }
+
+  isDraftCaptain(): boolean {
+    return this.isCurrentUserCaptain();
+  }
+
+  isCurrentUserCaptain(): boolean {
+    const userId = this.currentUserId();
+
+    return (
+      this.captainInfo()?.isCaptain === true ||
+      (!!userId && this.draftCaptains().some((captain) => captain.userId === userId)) ||
+      (!!userId && this.teams().some((team) => team.captain?.userId === userId))
+    );
+  }
+
+  getDraftStudentStatusText(): string {
+    const state = this.draftState();
+
+    if (!state?.isStarted) {
+      return this.isDraftCaptain()
+        ? 'Вы капитан команды. Ожидайте запуска драфта преподавателем.'
+        : 'Можно стать капитаном, пока открыт этап выбора капитанов.';
+    }
+
+    if (state.isCompleted) {
+      return 'Драфт завершен. Составы команд доступны для просмотра.';
+    }
+
+    if (this.isMyDraftTurn()) {
+      return 'Ваш ход. Выберите одного участника в команду.';
+    }
+
+    if (this.isDraftCaptain()) {
+      return 'Ожидайте своей очереди. Сейчас выбирает другой капитан.';
+    }
+
+    const myTeam = this.getMyDraftTeam();
+    return myTeam
+      ? `Вы в команде ${myTeam.name}.`
+      : 'Пока вас не выбрали в команду. Можно наблюдать за драфтом.';
+  }
+
   loadManualDistribution(assignmentId: string): void {
     this.isTeamsLoading.set(true);
     this.teamsError.set('');
@@ -359,7 +741,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
 
   openCreateTeamModal(): void {
     const assignment = this.assignment();
-    if (!assignment || !this.canEditManualTeams(assignment)) {
+    if (!assignment || !this.canCreateTeams(assignment)) {
       return;
     }
 
@@ -385,7 +767,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   }
 
   openAddMembersModal(team: AssignmentTeam, assignment: Assignment): void {
-    if (!this.canEditManualTeams(assignment) || this.isTeamFull(team, assignment)) {
+    if (!this.canEditTeams(assignment) || this.isTeamFull(team, assignment)) {
       return;
     }
 
@@ -457,7 +839,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     this.teamModalError.set('');
 
     const assignment = this.assignment();
-    if (!assignment || !this.canEditManualTeams(assignment) || this.createTeamForm.invalid) {
+    if (!assignment || !this.canCreateTeams(assignment) || this.createTeamForm.invalid) {
       return;
     }
 
@@ -503,7 +885,10 @@ export class CourseAssignmentDetailsComponent implements OnInit {
         console.error(err);
         this.isCreatingTeam.set(false);
         this.teamsError.set('Команда создана, но не удалось добавить всех студентов');
-        this.loadManualDistribution(assignmentId);
+        const assignment = this.assignment();
+        if (assignment) {
+          this.refreshTeamManagementData(assignment);
+        }
       },
     });
   }
@@ -515,7 +900,10 @@ export class CourseAssignmentDetailsComponent implements OnInit {
         console.error(err);
         this.isCreatingTeam.set(false);
         this.teamsError.set('Команда создана, но не удалось назначить капитана');
-        this.loadManualDistribution(assignmentId);
+        const assignment = this.assignment();
+        if (assignment) {
+          this.refreshTeamManagementData(assignment);
+        }
       },
     });
   }
@@ -528,12 +916,15 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     this.isCreateTeamModalOpen.set(false);
     this.isCreatingTeam.set(false);
     this.teamsSuccess.set(message);
-    this.loadManualDistribution(assignmentId);
+    const assignment = this.assignment();
+    if (assignment) {
+      this.refreshTeamManagementData(assignment);
+    }
   }
 
   addStudentToTeam(team: AssignmentTeam, student: AssignmentTeamStudent): void {
     const assignment = this.assignment();
-    if (!assignment || !this.canEditManualTeams(assignment) || this.processingMemberKey()) {
+    if (!assignment || !this.canEditTeams(assignment) || this.processingMemberKey()) {
       return;
     }
 
@@ -545,7 +936,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
       next: () => {
         this.processingMemberKey.set(null);
         this.teamsSuccess.set('Студент добавлен в команду');
-        this.loadManualDistribution(assignment.id);
+        this.refreshTeamManagementData(assignment);
       },
       error: (err) => {
         console.error(err);
@@ -557,7 +948,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
 
   removeStudentFromTeam(team: AssignmentTeam, member: AssignmentTeamMember): void {
     const assignment = this.assignment();
-    if (!assignment || !this.canEditManualTeams(assignment) || this.processingMemberKey()) {
+    if (!assignment || !this.canEditTeams(assignment) || this.processingMemberKey()) {
       return;
     }
 
@@ -569,7 +960,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
       next: () => {
         this.processingMemberKey.set(null);
         this.teamsSuccess.set('Студент удален из команды');
-        this.loadManualDistribution(assignment.id);
+        this.refreshTeamManagementData(assignment);
       },
       error: (err) => {
         console.error(err);
@@ -752,6 +1143,22 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     );
   }
 
+  getCaptainPanelStatus(): string {
+    return this.isCurrentUserCaptain()
+      ? 'Вы капитан команды'
+      : 'Вы пока не капитан команды';
+  }
+
+  getCaptainActionLabel(): string {
+    if (this.isCaptainActionLoading()) {
+      return 'Сохраняем...';
+    }
+
+    return this.isCurrentUserCaptain()
+      ? 'Отказаться от роли капитана'
+      : 'Стать капитаном';
+  }
+
   isCaptainSelectionOpen(assignment: Assignment): boolean {
     if (!assignment.captainSelectionEndsAtUtc) {
       return this.isTeamFormationOpen(assignment);
@@ -780,29 +1187,33 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     this.captainActionSuccess.set('');
     this.isCaptainActionLoading.set(true);
 
-    const request$ = captainInfo.isCaptain
+    const isCaptain = this.isCurrentUserCaptain();
+    const request$ = isCaptain
       ? this.assignmentsService.removeMyselfCaptain(assignment.id)
       : this.assignmentsService.assignMyselfCaptain(assignment.id);
 
     request$.subscribe({
       next: () => {
         this.captainActionSuccess.set(
-          captainInfo.isCaptain
-            ? 'Вы сняли себя с роли капитана'
-            : 'Вы назначили себя капитаном',
+          isCaptain
+            ? 'Вы отказались от роли капитана'
+            : 'Вы стали капитаном',
         );
         this.isCaptainActionLoading.set(false);
         this.loadCaptainInfo(assignment.id);
         if (this.canViewSelfSelectionTeams(assignment)) {
           this.loadAssignmentTeams(assignment.id);
         }
+        if (this.canViewCaptainDraft(assignment)) {
+          this.loadCaptainDraftBoard(assignment);
+        }
       },
       error: (err) => {
         console.error(err);
         this.captainActionError.set(
-          captainInfo.isCaptain
-            ? 'Не удалось снять себя с роли капитана'
-            : 'Не удалось назначить себя капитаном',
+          isCaptain
+            ? 'Не удалось отказаться от роли капитана'
+            : 'Не удалось стать капитаном',
         );
         this.isCaptainActionLoading.set(false);
       },
@@ -927,3 +1338,6 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     return student.id;
   }
 }
+
+
+
