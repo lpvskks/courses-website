@@ -43,18 +43,21 @@ export interface SubmissionFile {
   url: string;
   mimeType: string;
   size: number;
-  type: 'Image' | 'Document' | 'Video' | string;
+  type: 'Image' | 'Document' | 'Video' | string | number;
 }
 
 export interface AssignmentSubmission {
   id: string;
   assignmentId: string;
   studentId: string;
-  firstName: string;
-  lastName: string;
-  middleName: string;
+  firstName: string | null;
+  lastName: string | null;
+  middleName: string | null;
   created: string;
-  grade: number;
-  status: 'Submitted' | 'Reviewed' | 'Returned' | string;
+  grade: number | null;
+  teacherComment?: string | null;
+  gradedByTeacherId?: string | null;
+  gradedAtUtc?: string | null;
+  status: 'Submitted' | 'Reviewed' | 'Returned' | string | number;
   files: SubmissionFile[];
 }

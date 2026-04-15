@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+﻿import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -43,7 +43,7 @@ export class CreateAssignmentModalComponent {
     minTeamSize: [1, [Validators.required, Validators.min(1), Validators.max(100)]],
     maxTeamSize: [1, [Validators.required, Validators.min(1), Validators.max(100)]],
     teamFormationMode: ['teacher_managed', [Validators.required]],
-    captainSelectionEndsAtUtc: [''],
+    captainSelectionEndsAtUtc: ['', [Validators.required]],
     teamFormationEndsAtUtc: ['', [Validators.required]],
     isVisible: [true],
     requiresSubmission: [true],
@@ -51,7 +51,7 @@ export class CreateAssignmentModalComponent {
   });
 
   showCaptainSelectionEndsAt(): boolean {
-    return this.form.controls.teamFormationMode.getRawValue() !== 'teacher_managed';
+    return true;
   }
 
   close(): void {
@@ -205,10 +205,6 @@ export class CreateAssignmentModalComponent {
   }
 
   get captainSelectionEndsAtError(): string {
-    if (!this.showCaptainSelectionEndsAt()) {
-      return '';
-    }
-
     const control = this.form.controls.captainSelectionEndsAtUtc;
 
     if (control.touched && !control.getRawValue()) {
@@ -297,10 +293,6 @@ export class CreateAssignmentModalComponent {
   }
 
   private isCaptainSelectionDateValid(): boolean {
-    if (!this.showCaptainSelectionEndsAt()) {
-      return true;
-    }
-
     return (
       this.isBeforeOrEqual('captainSelectionEndsAtUtc', 'startsAtUtc') &&
       this.isBefore('captainSelectionEndsAtUtc', 'teamFormationEndsAtUtc')
@@ -309,10 +301,6 @@ export class CreateAssignmentModalComponent {
 
   private isTeamFormationDateValid(): boolean {
     const isAfterStart = this.isAfter('teamFormationEndsAtUtc', 'startsAtUtc');
-
-    if (!this.showCaptainSelectionEndsAt()) {
-      return isAfterStart;
-    }
 
     return isAfterStart && this.isAfter('teamFormationEndsAtUtc', 'captainSelectionEndsAtUtc');
   }
@@ -366,18 +354,11 @@ export class CreateAssignmentModalComponent {
   }
 
   private isCaptainSelectionDateFilled(): boolean {
-    return (
-      !this.showCaptainSelectionEndsAt() ||
-      !!this.form.controls.captainSelectionEndsAtUtc.getRawValue()
-    );
+    return !!this.form.controls.captainSelectionEndsAtUtc.getRawValue();
   }
 
   private getCaptainSelectionEndsAtValue(): string {
-    if (this.showCaptainSelectionEndsAt()) {
-      return this.form.controls.captainSelectionEndsAtUtc.getRawValue();
-    }
-
-    return this.form.controls.startsAtUtc.getRawValue();
+    return this.form.controls.captainSelectionEndsAtUtc.getRawValue();
   }
 }
 
@@ -386,3 +367,4 @@ type DateControlName =
   | 'teamFormationEndsAtUtc'
   | 'startsAtUtc'
   | 'deadline';
+

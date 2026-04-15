@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+﻿import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -107,17 +107,24 @@ export class AssignmentSolutionsPageComponent implements OnInit {
       .join(' ');
   }
 
-  getStatusLabel(status: string): string {
+  getStatusLabel(status: AssignmentSubmission['status']): string {
     switch (status) {
       case 'Submitted':
+      case 1:
         return 'Отправлено';
       case 'Reviewed':
+      case 2:
         return 'Проверено';
       case 'Returned':
+      case 3:
         return 'Возвращено';
       default:
-        return status;
+        return String(status);
     }
+  }
+
+  getInitials(submission: AssignmentSubmission): string {
+    return `${submission.firstName?.[0] ?? ''}${submission.lastName?.[0] ?? ''}` || '?';
   }
 
   trackBySubmissionId(_: number, submission: AssignmentSubmission): string {

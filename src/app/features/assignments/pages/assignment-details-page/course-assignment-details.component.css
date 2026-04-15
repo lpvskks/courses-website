@@ -1,4 +1,4 @@
-.assignment-details-page {
+﻿.assignment-details-page {
   min-height: calc(100vh - 72px);
   padding: 32px;
   background:
@@ -405,9 +405,11 @@
   word-break: break-word;
 }
 
-.comments-card {
+.comments-card,
+.submission-card {
   border-radius: 28px;
   padding: 24px;
+  margin-bottom: 24px;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(208, 226, 255, 0.9);
   box-shadow:

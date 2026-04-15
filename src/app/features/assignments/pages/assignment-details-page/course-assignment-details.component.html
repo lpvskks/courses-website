@@ -1,4 +1,4 @@
-<section class="assignment-details-page">
+﻿<section class="assignment-details-page">
   <div class="assignment-details-page__topbar">
     <button type="button" class="back-btn" (click)="back()">Назад к курсу</button>
 
@@ -204,11 +204,222 @@
       </div>
     </section>
 
+    <section class="submission-card" *ngIf="shouldShowSubmissionBlock(currentAssignment)">
+      <div class="section-header submission-card__header">
+        <div>
+          <h2 class="section-title">Решение задания</h2>
+          <p class="section-subtitle">
+            Прикрепите файлы до дедлайна. Капитан команды сможет выбрать одно из решений финальным.
+          </p>
+        </div>
+
+        <span class="status-badge" [class.status-badge--closed]="hasDeadlinePassed(currentAssignment)">
+          {{ hasDeadlinePassed(currentAssignment) ? 'Дедлайн прошел' : 'Прием открыт' }}
+        </span>
+      </div>
+
+      <div class="banner banner--info" *ngIf="!canSubmitSolution(currentAssignment)">
+        Дедлайн прошел, отправка решений закрыта.
+      </div>
+
+      <div *ngIf="solutionError()" class="banner banner--error">
+        {{ solutionError() }}
+      </div>
+
+      <div *ngIf="solutionSuccess()" class="banner banner--success">
+        {{ solutionSuccess() }}
+      </div>
+
+      <div *ngIf="mySubmissionError()" class="banner banner--error">
+        {{ mySubmissionError() }}
+      </div>
+
+      <div class="loading-card" *ngIf="isMySubmissionLoading()">
+        Загружаем ваше решение...
+      </div>
+
+      <ng-container *ngIf="!isMySubmissionLoading()">
+        <article class="submission-item my-submission-card" *ngIf="mySubmission() as submission; else noMySubmission">
+          <div class="submission-item__main">
+            <div>
+              <strong>Ваше решение от {{ submission.created | date: 'dd.MM.yyyy HH:mm' }}</strong>
+              <span>{{ getSubmissionStatusLabel(submission.status) }}</span>
+            </div>
+
+            <div class="submission-item__meta" *ngIf="submission.grade !== null || submission.teacherComment">
+              <span *ngIf="submission.grade !== null">Оценка: {{ submission.grade }}</span>
+              <span *ngIf="submission.teacherComment">Комментарий: {{ submission.teacherComment }}</span>
+            </div>
+
+            <div class="submission-item__files" *ngIf="submission.files.length">
+              <a
+                *ngFor="let file of submission.files; trackBy: trackBySubmissionFileId"
+                [href]="file.url"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {{ file.fileName }} · {{ formatFileSize(file.size) }}
+              </a>
+            </div>
+          </div>
+        </article>
+
+        <ng-template #noMySubmission>
+          <div class="empty-card empty-card--inside">Вы еще не отправили решение.</div>
+        </ng-template>
+      </ng-container>
+
+      <div class="submission-upload" *ngIf="canSubmitSolution(currentAssignment)">
+        <label class="submission-dropzone">
+          <input type="file" multiple (change)="onSubmissionFilesSelected($event)" />
+          <span class="submission-dropzone__title">Выбрать файлы решения</span>
+          <span class="submission-dropzone__text">Можно прикрепить несколько файлов</span>
+        </label>
+
+        <div class="submission-files" *ngIf="selectedSubmissionFiles().length">
+          <div
+            class="submission-file"
+            *ngFor="let file of selectedSubmissionFiles(); let i = index"
+          >
+            <div>
+              <strong>{{ file.name }}</strong>
+              <span>{{ formatFileSize(file.size) }}</span>
+            </div>
+
+            <button
+              type="button"
+              class="small-danger-btn"
+              (click)="removeSubmissionFile(i)"
+              [disabled]="isUploadingSubmission()"
+            >
+              Убрать
+            </button>
+          </div>
+        </div>
+
+        <div class="submission-card__actions">
+          <button
+            type="button"
+            class="primary-btn"
+            (click)="uploadSolution()"
+            [disabled]="isUploadingSubmission() || !selectedSubmissionFiles().length"
+          >
+            {{ isUploadingSubmission() ? 'Отправляем...' : 'Отправить решение' }}
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section
+      class="submission-card captain-submissions-card"
+      *ngIf="canViewCaptainFinalSelection(currentAssignment)"
+    >
+      <div class="section-header submission-card__header">
+        <div>
+          <h2 class="section-title">Финальное решение команды</h2>
+          <p class="section-subtitle">
+            Выберите одно решение участника команды. Оно станет финальным для преподавателя.
+          </p>
+        </div>
+
+        <span class="status-badge" [class.status-badge--closed]="hasDeadlinePassed(currentAssignment)">
+          {{ hasDeadlinePassed(currentAssignment) ? 'Выбор закрыт' : 'Можно выбрать' }}
+        </span>
+      </div>
+
+      <div *ngIf="captainTeamError()" class="banner banner--error">
+        {{ captainTeamError() }}
+      </div>
+
+      <div *ngIf="captainTeamSuccess()" class="banner banner--success">
+        {{ captainTeamSuccess() }}
+      </div>
+
+      <div class="loading-card" *ngIf="isCaptainTeamLoading()">Загружаем решения команды...</div>
+
+      <ng-container *ngIf="!isCaptainTeamLoading() && captainTeam() as team">
+        <div class="captain-team-summary">
+          <div>
+            <span>Команда</span>
+            <strong>{{ team.name }}</strong>
+          </div>
+          <div>
+            <span>Финальное решение</span>
+            <strong>{{ team.finalSubmissionId ? 'выбрано' : 'не выбрано' }}</strong>
+          </div>
+        </div>
+
+        <div class="member-submissions-list">
+          <article
+            class="member-submissions-card"
+            *ngFor="let member of team.members; trackBy: trackByCaptainTeamMemberId"
+          >
+            <div class="member-submissions-card__head">
+              <div class="team-member__avatar">
+                {{ member.firstName[0] }}{{ member.lastName[0] }}
+              </div>
+
+              <div>
+                <h3>{{ getSubmissionAuthor(member) }}</h3>
+                <p>{{ member.submissions.length }} решений</p>
+              </div>
+            </div>
+
+            <div class="submission-list" *ngIf="member.submissions.length; else noMemberSubmissions">
+              <article
+                class="submission-item"
+                *ngFor="let submission of member.submissions; trackBy: trackBySubmissionId"
+                [class.submission-item--final]="team.finalSubmissionId === submission.id"
+              >
+                <div class="submission-item__main">
+                  <div>
+                    <strong>Решение от {{ submission.created | date: 'dd.MM.yyyy HH:mm' }}</strong>
+                    <span *ngIf="team.finalSubmissionId === submission.id">Финальное решение</span>
+                  </div>
+
+                  <div class="submission-item__files" *ngIf="submission.files.length">
+                    <a
+                      *ngFor="let file of submission.files; trackBy: trackBySubmissionFileId"
+                      [href]="file.url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {{ file.fileName }}
+                    </a>
+                  </div>
+                </div>
+
+                <button
+                  *ngIf="canSelectFinalSubmission(currentAssignment, submission)"
+                  type="button"
+                  class="small-primary-btn"
+                  (click)="selectFinalSubmission(submission)"
+                  [disabled]="!!finalSubmissionActionId()"
+                >
+                  {{
+                    finalSubmissionActionId() === submission.id
+                      ? 'Выбираем...'
+                      : 'Выбрать финальным'
+                  }}
+                </button>
+              </article>
+            </div>
+
+            <ng-template #noMemberSubmissions>
+              <div class="empty-card empty-card--inside">Участник пока не отправил решение.</div>
+            </ng-template>
+          </article>
+        </div>
+      </ng-container>
+    </section>
+
     <section class="teams-card" *ngIf="canManageManualTeams(currentAssignment)">
       <div class="section-header teams-card__header">
         <div>
           <h2 class="section-title">Команды задания</h2>
-          <p class="section-subtitle">Создайте команды и распределите студентов вручную.</p>
+          <p class="section-subtitle">
+            {{ getTeamsStageSubtitle(currentAssignment, 'Создайте команды и распределите студентов вручную.') }}
+          </p>
         </div>
 
         <div class="teams-card__actions">
@@ -216,17 +427,38 @@
             *ngIf="canEditManualTeams(currentAssignment)"
             type="button"
             class="primary-btn"
-            (click)="openCreateTeamModal()"
+            (click)="openCreateTeamModal(currentAssignment)"
           >
-            Создать команду
+            Добавить команду
+          </button>
+
+          <button
+            *ngIf="canLockManualTeams(currentAssignment)"
+            type="button"
+            class="secondary-action-btn"
+            (click)="lockManualTeams()"
+            [disabled]="isLockingTeams()"
+          >
+            {{ isLockingTeams() ? 'Фиксируем...' : 'Зафиксировать состав' }}
           </button>
 
           <span class="section-count">{{ teams().length }}</span>
         </div>
       </div>
 
-      <div class="banner banner--info" *ngIf="hasAssignmentStarted(currentAssignment)">
-        Задание уже началось, поэтому состав команд доступен только для просмотра.
+      <div
+        class="banner banner--info"
+        *ngIf="currentAssignment.isTeamCompositionLocked && !hasTeamFormationEnded(currentAssignment)"
+      >
+        {{ getTeamsStageNotice(currentAssignment) }}
+      </div>
+
+      <div
+        class="banner banner--info"
+        *ngIf="canEditManualTeams(currentAssignment)"
+      >
+        Формировать команды можно до:
+        {{ currentAssignment.teamFormationEndsAtUtc | date: 'dd.MM.yyyy HH:mm' }}
       </div>
 
       <div *ngIf="teamsError()" class="banner banner--error">
@@ -240,15 +472,74 @@
       <div class="loading-card" *ngIf="isTeamsLoading()">Загружаем команды...</div>
 
       <div class="teams-list" *ngIf="!isTeamsLoading()">
+        <article class="team-card team-card--new" *ngIf="isCreateTeamModalOpen()">
+          <form [formGroup]="createTeamForm" (ngSubmit)="createTeam()">
+            <div class="team-card__head">
+              <div>
+                <h3 class="team-card__title">
+                  {{ selectedCaptain() ? 'Команда ' + selectedCaptain()?.firstName + ' ' + selectedCaptain()?.lastName : getNewTeamTitle() }}
+                </h3>
+                <p class="team-card__meta">
+                  Сначала выберите капитана. После создания команды можно будет добавить участников.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                class="small-danger-btn"
+                (click)="closeCreateTeamModal()"
+                [disabled]="isCreatingTeam()"
+              >
+                Убрать
+              </button>
+            </div>
+
+            <div class="inline-team-create">
+              <label class="team-modal__field">
+                <span>Капитан команды</span>
+                <select
+                  class="field__control"
+                  formControlName="captainId"
+                  (change)="createTeam()"
+                  [disabled]="isCreatingTeam()"
+                >
+                  <option value="">Выберите капитана</option>
+                  <option
+                    *ngFor="let student of availableStudents(); trackBy: trackByStudentId"
+                    [value]="student.id"
+                  >
+                    {{ student.lastName }} {{ student.firstName }}
+                  </option>
+                </select>
+              </label>
+
+              <div class="selected-person" *ngIf="selectedCaptain()">
+                <span class="team-member__avatar">
+                  {{ selectedCaptain()?.firstName?.[0] }}{{ selectedCaptain()?.lastName?.[0] }}
+                </span>
+                <span>
+                  <strong>{{ selectedCaptain()?.lastName }} {{ selectedCaptain()?.firstName }}</strong>
+                  <small>{{ selectedCaptain()?.email }}</small>
+                </span>
+              </div>
+
+              <div class="team-modal__error" *ngIf="teamModalError()">
+                {{ teamModalError() }}
+              </div>
+
+              <div class="team-card__actions" *ngIf="isCreatingTeam()">
+                <span class="team-card__capacity">Создаем команду...</span>
+              </div>
+            </div>
+          </form>
+        </article>
+
         <article class="team-card" *ngFor="let team of teams(); trackBy: trackByTeamId">
           <div class="team-card__head">
             <div>
               <h3 class="team-card__title">{{ team.name }}</h3>
               <p class="team-card__meta">
                 {{ team.members.length }} / {{ currentAssignment.maxTeamSize }} студентов
-              </p>
-              <p class="team-card__captain" *ngIf="team.captain">
-                Капитан: {{ team.captain.lastName }} {{ team.captain.firstName }}
               </p>
             </div>
 
@@ -283,6 +574,9 @@
               <div class="team-member__info">
                 <div class="team-member__name">
                   {{ member.lastName }} {{ member.firstName }}
+                  <span class="team-member__captain-badge" *ngIf="isTeamCaptain(team, member)">
+                    Капитан
+                  </span>
                 </div>
                 <div class="team-member__email">{{ member.email }}</div>
               </div>
@@ -319,7 +613,7 @@
         <div>
           <h2 class="section-title">Команды задания</h2>
           <p class="section-subtitle">
-            Капитаны выбираются студентами, а остальных студентов система распределяет случайно.
+            {{ getTeamsStageSubtitle(currentAssignment, 'Капитаны выбираются студентами, а остальных студентов система распределяет случайно.') }}
           </p>
         </div>
 
@@ -338,19 +632,15 @@
         </div>
       </div>
 
-      <div
-        class="banner banner--info"
-        *ngIf="hasTeamFormationEnded(currentAssignment)"
-      >
-        Этап формирования команд завершен, команды доступны только для просмотра.
-      </div>
-
       <div class="banner banner--info" *ngIf="!hasAssignmentStarted(currentAssignment)">
         Старт формирования команд:
         {{ getTeamFormationStartsAt(currentAssignment) | date: 'dd.MM.yyyy HH:mm' }}
       </div>
 
-      <div class="banner banner--info" *ngIf="currentAssignment.isTeamCompositionLocked && teams().length">
+      <div
+        class="banner banner--info"
+        *ngIf="currentAssignment.isTeamCompositionLocked && !hasTeamFormationEnded(currentAssignment) && teams().length"
+      >
         Состав команд зафиксирован.
       </div>
 
@@ -376,9 +666,6 @@
               <p class="team-card__meta">
                 {{ team.members.length }} / {{ currentAssignment.maxTeamSize }} студентов
               </p>
-              <p class="team-card__captain" *ngIf="team.captain">
-                Капитан: {{ team.captain.lastName }} {{ team.captain.firstName }}
-              </p>
             </div>
 
             <div class="team-card__actions">
@@ -403,6 +690,9 @@
               <div class="team-member__info">
                 <div class="team-member__name">
                   {{ member.lastName }} {{ member.firstName }}
+                  <span class="team-member__captain-badge" *ngIf="isTeamCaptain(team, member)">
+                    Капитан
+                  </span>
                 </div>
                 <div class="team-member__email">{{ member.email }}</div>
               </div>
@@ -425,7 +715,7 @@
         <div>
           <h2 class="section-title">Команды задания</h2>
           <p class="section-subtitle">
-            Капитаны создают команды, а студенты сами выбирают, к какой команде присоединиться.
+            {{ getTeamsStageSubtitle(currentAssignment, 'Капитаны создают команды, а студенты сами выбирают, к какой команде присоединиться.') }}
           </p>
         </div>
 
@@ -462,8 +752,9 @@
         {{ getTeamFormationStartsAt(currentAssignment) | date: 'dd.MM.yyyy HH:mm' }}
       </div>
 
-      <div class="banner banner--info" *ngIf="hasTeamFormationEnded(currentAssignment)">
-        Этап формирования команд завершен, команды доступны только для просмотра.
+      <div class="banner banner--info" *ngIf="!hasTeamFormationEnded(currentAssignment)">
+        Формировать команды можно до:
+        {{ currentAssignment.teamFormationEndsAtUtc | date: 'dd.MM.yyyy HH:mm' }}
       </div>
 
       <div *ngIf="teamsError()" class="banner banner--error">
@@ -483,9 +774,6 @@
               <h3 class="team-card__title">{{ team.name }}</h3>
               <p class="team-card__meta">
                 {{ team.members.length }} / {{ currentAssignment.maxTeamSize }} студентов
-              </p>
-              <p class="team-card__captain" *ngIf="team.captain">
-                Капитан: {{ team.captain.lastName }} {{ team.captain.firstName }}
               </p>
             </div>
 
@@ -535,6 +823,9 @@
               <div class="team-member__info">
                 <div class="team-member__name">
                   {{ member.lastName }} {{ member.firstName }}
+                  <span class="team-member__captain-badge" *ngIf="isTeamCaptain(team, member)">
+                    Капитан
+                  </span>
                 </div>
                 <div class="team-member__email">{{ member.email }}</div>
               </div>
@@ -627,16 +918,16 @@
 
     <div
       class="team-modal-backdrop"
-      *ngIf="isCreateTeamModalOpen()"
+      *ngIf="false && isCreateTeamModalOpen()"
       (click)="closeCreateTeamModal()"
     >
       <section class="team-modal" (click)="$event.stopPropagation()">
         <div class="team-modal__head">
           <div>
             <span class="team-modal__eyebrow">Команда</span>
-            <h2 class="team-modal__title">Создать команду</h2>
+            <h2 class="team-modal__title">Добавить команду</h2>
             <p class="team-modal__subtitle">
-              Укажите название и выберите студентов. Капитан будет добавлен в состав команды.
+              Сначала выберите капитана. После этого можно добавить участников в его команду.
             </p>
           </div>
 
@@ -652,32 +943,23 @@
         </div>
 
         <form class="team-modal__form" [formGroup]="createTeamForm" (ngSubmit)="createTeam()">
-          <label class="team-modal__field">
-            <span>Название команды</span>
-            <input type="text" formControlName="name" placeholder="Например: Команда 1" />
-          </label>
-
-          <div
-            class="field-error"
-            *ngIf="createTeamForm.controls.name.touched && createTeamForm.controls.name.invalid"
-          >
-            Введите название команды
-          </div>
-
           <div class="team-modal__students">
             <div class="team-modal__students-head">
               <div>
-                <span>Состав команды</span>
-                <p>Сначала выберите капитана и участников, затем создайте команду.</p>
+                <span>Команда {{ teams().length + 1 }}</span>
+                <p>Капитан создаст команду автоматически, затем в нее добавятся выбранные участники.</p>
               </div>
 
-              <strong>{{ selectedTeamStudentIds().length }} / {{ currentAssignment.maxTeamSize }}</strong>
+              <strong>
+                {{ selectedTeamStudents().length + (selectedCaptain() ? 1 : 0) }} /
+                {{ currentAssignment.maxTeamSize }}
+              </strong>
             </div>
 
             <div class="team-compose">
               <div class="team-compose__slot">
                 <div>
-                  <span class="team-compose__label">Капитан</span>
+                  <span class="team-compose__label">Шаг 1. Капитан</span>
                   <div class="selected-person" *ngIf="selectedCaptain(); else noCaptain">
                     <span class="team-member__avatar">
                       {{ selectedCaptain()?.firstName?.[0] }}{{ selectedCaptain()?.lastName?.[0] }}
@@ -693,17 +975,24 @@
                 </div>
 
                 <button type="button" class="secondary-action-btn" (click)="openCaptainPicker()">
-                  {{ selectedCaptain() ? 'Изменить капитана' : 'Добавить капитана' }}
+                  {{ selectedCaptain() ? 'Изменить капитана' : 'Выбрать капитана' }}
                 </button>
               </div>
 
-              <div class="team-compose__slot">
+              <div class="team-compose__slot" *ngIf="selectedCaptain()">
                 <div>
-                  <span class="team-compose__label">Участники</span>
-                  <strong>{{ selectedTeamStudents().length }} выбрано</strong>
+                  <span class="team-compose__label">Шаг 2. Участники</span>
+                  <strong>
+                    {{ selectedTeamStudents().length }} выбрано
+                  </strong>
                 </div>
 
-                <button type="button" class="secondary-action-btn" (click)="openMembersPicker()">
+                <button
+                  type="button"
+                  class="secondary-action-btn"
+                  (click)="openMembersPicker()"
+                  [disabled]="!selectedCaptain()"
+                >
                   Добавить участников
                 </button>
               </div>
@@ -737,17 +1026,17 @@
                   <p>
                     {{
                       pickerMode === 'captain'
-                        ? 'Капитан автоматически попадет в состав команды.'
-                        : 'Можно выбрать несколько студентов.'
+                        ? 'После выбора капитана появится шаг добавления участников.'
+                        : 'Можно выбрать несколько студентов. Капитан уже входит в команду.'
                     }}
                   </p>
                 </div>
 
-                <div class="team-modal__students-list" *ngIf="availableStudents().length; else emptyCreateTeamStudents">
+                <div class="team-modal__students-list" *ngIf="getTeamPickerStudents(pickerMode).length; else emptyCreateTeamStudents">
                   <button
                     type="button"
                     class="team-modal-student"
-                    *ngFor="let student of availableStudents(); trackBy: trackByStudentId"
+                    *ngFor="let student of getTeamPickerStudents(pickerMode); trackBy: trackByStudentId"
                     [class.team-modal-student--selected]="isStudentSelected(student.id)"
                     [class.team-modal-student--captain]="createTeamForm.controls.captainId.getRawValue() === student.id"
                     (click)="pickerMode === 'captain' ? setCaptain(student.id) : toggleTeamStudent(student, currentAssignment.maxTeamSize)"
@@ -766,7 +1055,7 @@
                     <span class="team-modal-student__state" *ngIf="createTeamForm.controls.captainId.getRawValue() === student.id">
                       Капитан
                     </span>
-                    <span class="team-modal-student__state" *ngIf="pickerMode === 'members' && isStudentSelected(student.id) && createTeamForm.controls.captainId.getRawValue() !== student.id">
+                    <span class="team-modal-student__state" *ngIf="pickerMode === 'members' && isStudentSelected(student.id)">
                       Выбран
                     </span>
                   </button>
@@ -790,7 +1079,7 @@
             </button>
 
             <button type="submit" class="primary-btn" [disabled]="isCreatingTeam()">
-              {{ isCreatingTeam() ? 'Создаем...' : 'Создать команду' }}
+              {{ isCreatingTeam() ? 'Добавляем...' : 'Добавить команду' }}
             </button>
           </div>
         </form>
@@ -843,3 +1132,4 @@
     </section>
   </ng-container>
 </section>
+

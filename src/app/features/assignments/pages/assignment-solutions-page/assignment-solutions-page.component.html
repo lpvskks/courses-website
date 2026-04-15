@@ -1,4 +1,4 @@
-<section class="assignment-solutions-page">
+﻿<section class="assignment-solutions-page">
   <div class="assignment-solutions-page__topbar">
     <button type="button" class="back-btn" (click)="back()">← Назад к заданию</button>
   </div>
@@ -31,7 +31,7 @@
         >
           <div class="solution-row__main">
             <div class="solution-row__avatar">
-              {{ submission.firstName[0] }}{{ submission.lastName[0] }}
+              {{ getInitials(submission) }}
             </div>
 
             <div class="solution-row__info">

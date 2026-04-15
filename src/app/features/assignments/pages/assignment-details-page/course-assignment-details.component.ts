@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+﻿import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
@@ -12,10 +12,12 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin, timer } from 'rxjs';
 
-import { Assignment } from '../../../../core/models/assigment.model';
+import { Assignment, AssignmentSubmission, SubmissionFile } from '../../../../core/models/assigment.model';
 import { AssignmentComment } from '../../../../core/models/assignment-comment.model';
 import {
   AssignmentCaptainInfo,
+  CaptainTeam,
+  CaptainTeamMemberSubmissions,
   AssignmentTeam,
   AssignmentTeamMember,
   AssignmentTeamStudent,
@@ -47,8 +49,11 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   assignment = signal<Assignment | null>(null);
   comments = signal<AssignmentComment[]>([]);
   captainInfo = signal<AssignmentCaptainInfo | null>(null);
+  captainTeam = signal<CaptainTeam | null>(null);
+  mySubmission = signal<AssignmentSubmission | null>(null);
   teams = signal<AssignmentTeam[]>([]);
   availableStudents = signal<AssignmentTeamStudent[]>([]);
+  selectedSubmissionFiles = signal<File[]>([]);
 
   isLoading = signal(true);
   isCommentsLoading = signal(true);
@@ -60,7 +65,12 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   isCreateTeamModalOpen = signal(false);
   isAddMembersModalOpen = signal(false);
   isRunningRandomDistribution = signal(false);
+  isUploadingSubmission = signal(false);
+  isMySubmissionLoading = signal(false);
+  isCaptainTeamLoading = signal(false);
+  isLockingTeams = signal(false);
   processingSelfTeamId = signal<string | null>(null);
+  finalSubmissionActionId = signal<string | null>(null);
 
   loadError = signal('');
   commentsError = signal('');
@@ -71,6 +81,11 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   unavailableAssignmentNotice = signal('');
   teamsError = signal('');
   teamsSuccess = signal('');
+  solutionError = signal('');
+  solutionSuccess = signal('');
+  mySubmissionError = signal('');
+  captainTeamError = signal('');
+  captainTeamSuccess = signal('');
   processingMemberKey = signal<string | null>(null);
   selectedTeamStudentIds = signal<string[]>([]);
   teamPickerMode = signal<'captain' | 'members' | null>(null);
@@ -82,13 +97,14 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   });
 
   readonly createTeamForm = this.fb.nonNullable.group({
-    name: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(80)]],
-    captainId: [''],
+    name: [''],
+    captainId: ['', [Validators.required]],
   });
 
   readonly selectedTeamStudents = computed(() => {
     const selectedIds = new Set(this.selectedTeamStudentIds());
-    return this.availableStudents().filter((student) => selectedIds.has(student.id));
+    const captainId = this.createTeamForm.controls.captainId.getRawValue();
+    return this.availableStudents().filter((student) => selectedIds.has(student.id) && student.id !== captainId);
   });
 
   readonly selectedCaptain = computed(() => {
@@ -126,7 +142,16 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     this.commentsError.set('');
     this.submitError.set('');
     this.submitSuccess.set('');
+    this.solutionError.set('');
+    this.solutionSuccess.set('');
+    this.mySubmissionError.set('');
+    this.captainTeamError.set('');
+    this.captainTeamSuccess.set('');
+    this.selectedSubmissionFiles.set([]);
+    this.mySubmission.set(null);
+    this.captainTeam.set(null);
     this.captainInfo.set(null);
+    this.captainTeam.set(null);
     this.captainActionError.set('');
     this.captainActionSuccess.set('');
     this.unavailableAssignmentNotice.set('');
@@ -143,6 +168,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
         this.isCommentsLoading.set(false);
         this.loadCaptainInfoIfAvailable(assignment);
         this.loadTeamsIfAvailable(assignment);
+        this.loadMySubmissionIfAvailable(assignment);
       },
       error: (err) => {
         console.error(err);
@@ -181,6 +207,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     );
     this.loadCaptainInfoIfAvailable(fallbackAssignment);
     this.loadTeamsIfAvailable(fallbackAssignment);
+    this.loadMySubmissionIfAvailable(fallbackAssignment);
 
     return true;
   }
@@ -244,7 +271,15 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   }
 
   canEditManualTeams(assignment: Assignment): boolean {
-    return this.canManageManualTeams(assignment) && !this.hasAssignmentStarted(assignment);
+    return (
+      this.canManageManualTeams(assignment) &&
+      !this.hasTeamFormationEnded(assignment) &&
+      !assignment.isTeamCompositionLocked
+    );
+  }
+
+  canLockManualTeams(assignment: Assignment): boolean {
+    return this.canEditManualTeams(assignment) && this.teams().length > 1;
   }
 
   hasAssignmentStarted(assignment: Assignment): boolean {
@@ -288,7 +323,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   }
 
   getTeamFormationStartsAt(assignment: Assignment): string {
-    return assignment.teamFormationStartsAtUtc || assignment.startsAtUtc;
+    return assignment.captainSelectionEndsAtUtc || assignment.teamFormationStartsAtUtc || assignment.startsAtUtc;
   }
 
   loadAssignmentTeams(assignmentId: string): void {
@@ -357,9 +392,10 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     });
   }
 
-  openCreateTeamModal(): void {
-    const assignment = this.assignment();
+  openCreateTeamModal(currentAssignment?: Assignment): void {
+    const assignment = currentAssignment ?? this.assignment();
     if (!assignment || !this.canEditManualTeams(assignment)) {
+      this.teamsError.set('Сейчас нельзя создать команду для этого задания');
       return;
     }
 
@@ -382,6 +418,10 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     this.teamPickerMode.set(null);
     this.teamModalError.set('');
     this.createTeamForm.reset();
+  }
+
+  getNewTeamTitle(): string {
+    return `Команда ${this.teams().length + 1}`;
   }
 
   openAddMembersModal(team: AssignmentTeam, assignment: Assignment): void {
@@ -409,15 +449,28 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   }
 
   openMembersPicker(): void {
+    if (!this.selectedCaptain()) {
+      this.teamModalError.set('Сначала выберите капитана команды');
+      return;
+    }
+
+    this.teamModalError.set('');
     this.teamPickerMode.set('members');
+  }
+
+  getTeamPickerStudents(mode: 'captain' | 'members'): AssignmentTeamStudent[] {
+    const captainId = this.createTeamForm.controls.captainId.getRawValue();
+
+    if (mode === 'members') {
+      return this.availableStudents().filter((student) => student.id !== captainId);
+    }
+
+    return this.availableStudents();
   }
 
   setCaptain(studentId: string): void {
     this.createTeamForm.controls.captainId.setValue(studentId);
-
-    if (studentId && !this.selectedTeamStudentIds().includes(studentId)) {
-      this.selectedTeamStudentIds.update((ids) => [...ids, studentId]);
-    }
+    this.selectedTeamStudentIds.update((ids) => ids.filter((id) => id !== studentId));
 
     this.teamPickerMode.set(null);
   }
@@ -427,18 +480,20 @@ export class CourseAssignmentDetailsComponent implements OnInit {
 
     const ids = this.selectedTeamStudentIds();
     const isSelected = ids.includes(student.id);
+    const captainId = this.createTeamForm.controls.captainId.getRawValue();
+
+    if (student.id === captainId) {
+      this.teamModalError.set('Капитан уже входит в свою команду');
+      return;
+    }
 
     if (isSelected) {
       this.selectedTeamStudentIds.set(ids.filter((id) => id !== student.id));
 
-      if (this.createTeamForm.controls.captainId.getRawValue() === student.id) {
-        this.createTeamForm.controls.captainId.setValue('');
-      }
-
       return;
     }
 
-    if (ids.length >= maxTeamSize) {
+    if (ids.length + 1 >= maxTeamSize) {
       this.teamModalError.set(`В команде может быть не больше ${maxTeamSize} студентов`);
       return;
     }
@@ -450,6 +505,10 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     return this.selectedTeamStudentIds().includes(studentId);
   }
 
+  isTeamCaptain(team: AssignmentTeam, member: AssignmentTeamMember): boolean {
+    return team.captain?.userId === member.userId;
+  }
+
   createTeam(): void {
     this.createTeamForm.markAllAsTouched();
     this.teamsError.set('');
@@ -458,63 +517,61 @@ export class CourseAssignmentDetailsComponent implements OnInit {
 
     const assignment = this.assignment();
     if (!assignment || !this.canEditManualTeams(assignment) || this.createTeamForm.invalid) {
+      if (this.createTeamForm.controls.captainId.invalid) {
+        this.teamModalError.set('Сначала выберите капитана команды');
+      }
       return;
     }
 
-    const name = this.createTeamForm.controls.name.getRawValue().trim();
-    if (!name) {
-      this.createTeamForm.controls.name.setErrors({ required: true });
-      return;
-    }
-
+    const captainId = this.createTeamForm.controls.captainId.getRawValue();
     this.isCreatingTeam.set(true);
 
-    this.assignmentsService.createTeam(assignment.id, { name }).subscribe({
-      next: (team) => {
-        this.addInitialMembersToCreatedTeam(assignment.id, team);
-      },
+    this.assignmentsService.assignCaptain(assignment.id, captainId).subscribe({
+      next: () => this.addMembersToCaptainTeam(assignment.id, captainId),
       error: (err) => {
         console.error(err);
         this.isCreatingTeam.set(false);
-        this.teamsError.set('Не удалось создать команду');
+        this.teamModalError.set(this.getApiErrorMessage(err, 'Не удалось создать команду капитана'));
       },
     });
   }
 
-  private addInitialMembersToCreatedTeam(assignmentId: string, team: AssignmentTeam): void {
-    const captainId = this.createTeamForm.controls.captainId.getRawValue();
-    const studentIds = Array.from(new Set([...this.selectedTeamStudentIds(), captainId].filter(Boolean)));
+  private addMembersToCaptainTeam(assignmentId: string, captainId: string): void {
+    const studentIds = Array.from(
+      new Set(this.selectedTeamStudentIds().filter((studentId) => studentId && studentId !== captainId)),
+    );
 
     if (!studentIds.length) {
-      this.finishTeamCreation(assignmentId, 'Команда создана');
+      this.finishTeamCreation(assignmentId, 'Команда капитана создана');
       return;
     }
 
-    forkJoin(studentIds.map((studentId) => this.assignmentsService.addTeamMember(team.id, studentId))).subscribe({
-      next: () => {
-        if (!captainId) {
-          this.finishTeamCreation(assignmentId, 'Команда создана, студенты добавлены');
+    this.assignmentsService.getManualDistribution(assignmentId).subscribe({
+      next: (response) => {
+        const team = response.teams.find((item) => item.captain?.userId === captainId);
+
+        if (!team) {
+          this.isCreatingTeam.set(false);
+          this.teamsError.set('Команда капитана создана, но не удалось найти ее для добавления участников');
+          this.teams.set(response.teams);
+          this.availableStudents.set(response.availableStudents);
           return;
         }
 
-        this.assignCaptainAfterTeamCreation(assignmentId, captainId);
+        forkJoin(studentIds.map((studentId) => this.assignmentsService.addTeamMember(team.id, studentId))).subscribe({
+          next: () => this.finishTeamCreation(assignmentId, 'Команда капитана создана, участники добавлены'),
+          error: (err) => {
+            console.error(err);
+            this.isCreatingTeam.set(false);
+            this.teamsError.set('Команда капитана создана, но не удалось добавить всех участников');
+            this.loadManualDistribution(assignmentId);
+          },
+        });
       },
       error: (err) => {
         console.error(err);
         this.isCreatingTeam.set(false);
-        this.teamsError.set('Команда создана, но не удалось добавить всех студентов');
-        this.loadManualDistribution(assignmentId);
-      },
-    });
-  }
-
-  private assignCaptainAfterTeamCreation(assignmentId: string, captainId: string): void {
-    this.assignmentsService.assignCaptain(assignmentId, captainId).subscribe({
-      next: () => this.finishTeamCreation(assignmentId, 'Команда создана, капитан назначен'),
-      error: (err) => {
-        console.error(err);
-        this.isCreatingTeam.set(false);
-        this.teamsError.set('Команда создана, но не удалось назначить капитана');
+        this.teamsError.set('Команда капитана создана, но не удалось обновить список команд');
         this.loadManualDistribution(assignmentId);
       },
     });
@@ -575,6 +632,35 @@ export class CourseAssignmentDetailsComponent implements OnInit {
         console.error(err);
         this.processingMemberKey.set(null);
         this.teamsError.set('Не удалось удалить студента из команды');
+      },
+    });
+  }
+
+  lockManualTeams(): void {
+    const assignment = this.assignment();
+    if (!assignment || !this.canLockManualTeams(assignment) || this.isLockingTeams()) {
+      return;
+    }
+
+    this.teamsError.set('');
+    this.teamsSuccess.set('');
+    this.isLockingTeams.set(true);
+
+    this.assignmentsService.lockTeams(assignment.id).subscribe({
+      next: () => {
+        this.isLockingTeams.set(false);
+        this.teamsSuccess.set('Состав команд зафиксирован');
+        this.assignment.set({
+          ...assignment,
+          isTeamCompositionLocked: true,
+          teamCompositionLockedAtUtc: new Date().toISOString(),
+        });
+        this.loadManualDistribution(assignment.id);
+      },
+      error: (err) => {
+        console.error(err);
+        this.isLockingTeams.set(false);
+        this.teamsError.set(this.getApiErrorMessage(err, 'Не удалось зафиксировать состав команд'));
       },
     });
   }
@@ -723,7 +809,11 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   }
 
   shouldLoadCaptainInfo(assignment: Assignment): boolean {
-    return this.isStudent() && assignment.teamFormationMode !== 'teacher_managed';
+    return (
+      this.isStudent() &&
+      (assignment.teamFormationMode !== 'teacher_managed' ||
+        (assignment.requiresSubmission && this.hasTeamFormationEnded(assignment)))
+    );
   }
 
   loadCaptainInfo(assignmentId: string): void {
@@ -734,12 +824,36 @@ export class CourseAssignmentDetailsComponent implements OnInit {
       next: (captainInfo) => {
         this.captainInfo.set(captainInfo);
         this.isCaptainInfoLoading.set(false);
+
+        const assignment = this.assignment();
+        if (assignment && this.canViewCaptainFinalSelection(assignment, captainInfo)) {
+          this.loadCaptainTeam(assignment.id);
+        }
       },
       error: (err) => {
         console.error(err);
         this.captainInfo.set(null);
+        this.captainTeam.set(null);
         this.isCaptainInfoLoading.set(false);
         this.captainActionError.set('Не удалось загрузить статус капитана');
+      },
+    });
+  }
+
+  loadCaptainTeam(assignmentId: string): void {
+    this.isCaptainTeamLoading.set(true);
+    this.captainTeamError.set('');
+
+    this.assignmentsService.getCaptainMyTeam(assignmentId).subscribe({
+      next: (team) => {
+        this.captainTeam.set(team);
+        this.isCaptainTeamLoading.set(false);
+      },
+      error: (err) => {
+        console.error(err);
+        this.captainTeam.set(null);
+        this.isCaptainTeamLoading.set(false);
+        this.captainTeamError.set(this.getApiErrorMessage(err, 'Не удалось загрузить решения команды'));
       },
     });
   }
@@ -766,6 +880,192 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     }
 
     return new Date().getTime() < new Date(assignment.teamFormationEndsAtUtc).getTime();
+  }
+
+  hasDeadlinePassed(assignment: Assignment): boolean {
+    if (!assignment.deadline) {
+      return false;
+    }
+
+    return new Date().getTime() >= new Date(assignment.deadline).getTime();
+  }
+
+  canSubmitSolution(assignment: Assignment): boolean {
+    return (
+      this.isStudent() &&
+      assignment.requiresSubmission &&
+      this.hasTeamFormationEnded(assignment) &&
+      !this.hasDeadlinePassed(assignment)
+    );
+  }
+
+  shouldShowSubmissionBlock(assignment: Assignment): boolean {
+    return this.isStudent() && assignment.requiresSubmission && this.hasTeamFormationEnded(assignment);
+  }
+
+  getTeamsStageSubtitle(assignment: Assignment, formationText: string): string {
+    if (this.hasTeamFormationEnded(assignment) && assignment.requiresSubmission && !this.hasDeadlinePassed(assignment)) {
+      return 'Состав команды. Сейчас участники выполняют задание и отправляют решения.';
+    }
+
+    if (this.hasDeadlinePassed(assignment)) {
+      return 'Состав команды. Дедлайн прошел, можно смотреть решения и выставлять оценки.';
+    }
+
+    if (assignment.isTeamCompositionLocked) {
+      return 'Состав команды зафиксирован.';
+    }
+
+    return formationText;
+  }
+
+  getTeamsStageNotice(assignment: Assignment): string {
+    if (this.hasTeamFormationEnded(assignment) && assignment.requiresSubmission && !this.hasDeadlinePassed(assignment)) {
+      return 'Состав команды зафиксирован. Сейчас идет этап выполнения задания.';
+    }
+
+    if (this.hasDeadlinePassed(assignment)) {
+      return 'Дедлайн прошел. Решения можно открыть и проверить.';
+    }
+
+    if (assignment.isTeamCompositionLocked) {
+      return 'Состав команды зафиксирован.';
+    }
+
+    return 'Состав команды доступен для просмотра.';
+  }
+
+  loadMySubmissionIfAvailable(assignment: Assignment): void {
+    if (!this.shouldShowSubmissionBlock(assignment)) {
+      this.mySubmission.set(null);
+      this.mySubmissionError.set('');
+      this.isMySubmissionLoading.set(false);
+      return;
+    }
+
+    this.loadMySubmission(assignment.id);
+  }
+
+  loadMySubmission(assignmentId: string): void {
+    this.isMySubmissionLoading.set(true);
+    this.mySubmissionError.set('');
+
+    this.assignmentsService.getMySubmission(assignmentId).subscribe({
+      next: (submission) => {
+        this.mySubmission.set(submission);
+        this.isMySubmissionLoading.set(false);
+      },
+      error: (err) => {
+        if (err instanceof HttpErrorResponse && err.status === 404) {
+          this.mySubmission.set(null);
+          this.isMySubmissionLoading.set(false);
+          return;
+        }
+
+        console.error(err);
+        this.mySubmission.set(null);
+        this.isMySubmissionLoading.set(false);
+        this.mySubmissionError.set(this.getApiErrorMessage(err, 'Не удалось загрузить ваше решение'));
+      },
+    });
+  }
+
+  canViewCaptainFinalSelection(
+    assignment: Assignment,
+    captainInfo = this.captainInfo(),
+  ): boolean {
+    return (
+      this.isStudent() &&
+      captainInfo?.isCaptain === true &&
+      assignment.requiresSubmission &&
+      this.hasTeamFormationEnded(assignment)
+    );
+  }
+
+  canSelectFinalSubmission(assignment: Assignment, submission: AssignmentSubmission): boolean {
+    return (
+      this.canViewCaptainFinalSelection(assignment) &&
+      !this.hasDeadlinePassed(assignment) &&
+      this.captainTeam()?.finalSubmissionId !== submission.id
+    );
+  }
+
+  onSubmissionFilesSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+
+    if (!files.length) {
+      return;
+    }
+
+    this.selectedSubmissionFiles.update((currentFiles) => [...currentFiles, ...files]);
+    input.value = '';
+    this.solutionError.set('');
+    this.solutionSuccess.set('');
+  }
+
+  removeSubmissionFile(index: number): void {
+    this.selectedSubmissionFiles.update((files) => files.filter((_, i) => i !== index));
+  }
+
+  uploadSolution(): void {
+    const assignment = this.assignment();
+    const files = this.selectedSubmissionFiles();
+
+    if (!assignment || !this.canSubmitSolution(assignment) || this.isUploadingSubmission()) {
+      return;
+    }
+
+    if (!files.length) {
+      this.solutionError.set('Выберите хотя бы один файл решения');
+      return;
+    }
+
+    this.solutionError.set('');
+    this.solutionSuccess.set('');
+    this.isUploadingSubmission.set(true);
+
+    this.assignmentsService.uploadSubmissionFiles(assignment.id, files).subscribe({
+      next: () => {
+        this.selectedSubmissionFiles.set([]);
+        this.isUploadingSubmission.set(false);
+        this.solutionSuccess.set('Решение отправлено');
+        this.loadMySubmission(assignment.id);
+
+        if (this.canViewCaptainFinalSelection(assignment)) {
+          this.loadCaptainTeam(assignment.id);
+        }
+      },
+      error: (err) => {
+        console.error(err);
+        this.isUploadingSubmission.set(false);
+        this.solutionError.set(this.getApiErrorMessage(err, 'Не удалось отправить решение'));
+      },
+    });
+  }
+
+  selectFinalSubmission(submission: AssignmentSubmission): void {
+    const assignment = this.assignment();
+    if (!assignment || !this.canSelectFinalSubmission(assignment, submission) || this.finalSubmissionActionId()) {
+      return;
+    }
+
+    this.captainTeamError.set('');
+    this.captainTeamSuccess.set('');
+    this.finalSubmissionActionId.set(submission.id);
+
+    this.assignmentsService.selectFinalSubmission(assignment.id, submission.id).subscribe({
+      next: () => {
+        this.finalSubmissionActionId.set(null);
+        this.captainTeamSuccess.set('Финальное решение выбрано');
+        this.loadCaptainTeam(assignment.id);
+      },
+      error: (err) => {
+        console.error(err);
+        this.finalSubmissionActionId.set(null);
+        this.captainTeamError.set(this.getApiErrorMessage(err, 'Не удалось выбрать финальное решение'));
+      },
+    });
   }
 
   toggleCaptainRole(): void {
@@ -891,6 +1191,26 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     return `${(size / (1024 * 1024)).toFixed(1)} МБ`;
   }
 
+  getSubmissionAuthor(member: CaptainTeamMemberSubmissions): string {
+    return [member.lastName, member.firstName, member.middleName].filter(Boolean).join(' ');
+  }
+
+  getSubmissionStatusLabel(status: AssignmentSubmission['status']): string {
+    if (status === 1 || status === 'Submitted') {
+      return 'Отправлено';
+    }
+
+    if (status === 2 || status === 'Reviewed') {
+      return 'Проверено';
+    }
+
+    if (status === 3 || status === 'Returned') {
+      return 'Возвращено';
+    }
+
+    return 'Отправлено';
+  }
+
   private getApiErrorMessage(err: unknown, fallback: string): string {
     if (err instanceof HttpErrorResponse) {
       const errorBody = err.error as { title?: string; detail?: string; message?: string } | string | null;
@@ -915,6 +1235,10 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     return file.id;
   }
 
+  trackBySubmissionFileId(_: number, file: SubmissionFile): string {
+    return file.id;
+  }
+
   trackByTeamId(_: number, team: AssignmentTeam): string {
     return team.id;
   }
@@ -926,4 +1250,13 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   trackByStudentId(_: number, student: AssignmentTeamStudent): string {
     return student.id;
   }
+
+  trackBySubmissionId(_: number, submission: AssignmentSubmission): string {
+    return submission.id;
+  }
+
+  trackByCaptainTeamMemberId(_: number, member: CaptainTeamMemberSubmissions): string {
+    return member.userId;
+  }
 }
+

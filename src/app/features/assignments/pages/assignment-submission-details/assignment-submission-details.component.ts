@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+﻿import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -72,7 +72,7 @@ export class AssignmentSubmissionDetailsComponent implements OnInit {
   }
 
   canGradeSubmission(): boolean {
-    return this.submission()?.status === 'Submitted';
+    return this.submission()?.status === 'Submitted' || this.submission()?.status === 1;
   }
 
   getStudentFullName(): string {
@@ -84,16 +84,19 @@ export class AssignmentSubmissionDetailsComponent implements OnInit {
       .join(' ');
   }
 
-  getStatusLabel(status: string): string {
+  getStatusLabel(status: AssignmentSubmission['status']): string {
     switch (status) {
       case 'Submitted':
+      case 1:
         return 'Отправлено';
       case 'Reviewed':
+      case 2:
         return 'Проверено';
       case 'Returned':
+      case 3:
         return 'Возвращено';
       default:
-        return status;
+        return String(status);
     }
   }
 
@@ -123,7 +126,7 @@ export class AssignmentSubmissionDetailsComponent implements OnInit {
           this.submission.set({
             ...submission,
             grade: selectedGrade,
-            status: submission.status === 'Submitted' ? 'Reviewed' : submission.status,
+            status: submission.status === 'Submitted' || submission.status === 1 ? 'Reviewed' : submission.status,
           });
 
           this.isSavingGrade.set(false);
@@ -151,3 +154,4 @@ export class AssignmentSubmissionDetailsComponent implements OnInit {
     return grade;
   }
 }
+

@@ -60,12 +60,31 @@ export interface ManualDistributionResponse {
   availableStudents: AssignmentTeamStudent[];
 }
 
+export interface CaptainTeamMemberSubmissions {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  middleName: string | null;
+  submissions: AssignmentSubmission[];
+}
+
+export interface CaptainTeam {
+  id: string;
+  assignmentId: string;
+  name: string;
+  captain: AssignmentTeamMember;
+  finalSubmissionId: string | null;
+  members: CaptainTeamMemberSubmissions[];
+}
+
 @Injectable({
   providedIn: 'root',
 })
 export class AssignmentsService {
   private readonly http = inject(HttpClient);
+  private readonly rootUrl = 'http://111.88.155.34:5196';
   private readonly baseUrl = 'http://111.88.155.34:5196/api/assignments';
+  private readonly submissionsUrl = 'http://111.88.155.34:5196/api/submissions';
 
   getAssignmentById(assignmentId: string): Observable<Assignment> {
     return this.http.get<Assignment>(`${this.baseUrl}/${assignmentId}`);
@@ -128,6 +147,10 @@ export class AssignmentsService {
     return this.http.delete<void>(`${this.baseUrl}/teams/${teamId}/members/${studentId}`);
   }
 
+  lockTeams(assignmentId: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${assignmentId}/teams/lock`, {});
+  }
+
   joinTeamSelf(teamId: string): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/teams/${teamId}/join-self`, {});
   }
@@ -144,6 +167,32 @@ export class AssignmentsService {
     });
 
     return this.http.post<void>(`${this.baseUrl}/${assignmentId}/files`, formData);
+  }
+
+  uploadSubmissionFiles(assignmentId: string, files: File[]): Observable<AssignmentSubmission> {
+    const formData = new FormData();
+
+    files.forEach((file) => {
+      formData.append('files', file);
+    });
+
+    return this.http.post<AssignmentSubmission>(`${this.submissionsUrl}/${assignmentId}/files`, formData);
+  }
+
+  getMySubmission(assignmentId: string): Observable<AssignmentSubmission> {
+    return this.http.get<AssignmentSubmission>(
+      `${this.rootUrl}/assignments/${assignmentId}/my-submission`,
+    );
+  }
+
+  getCaptainMyTeam(assignmentId: string): Observable<CaptainTeam> {
+    return this.http.get<CaptainTeam>(`${this.baseUrl}/${assignmentId}/teams/captain/my-team`);
+  }
+
+  selectFinalSubmission(assignmentId: string, submissionId: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${assignmentId}/teams/captain/final-submission`, {
+      submissionId,
+    });
   }
 
   getAssignmentSubmissions(assignmentId: string) {
