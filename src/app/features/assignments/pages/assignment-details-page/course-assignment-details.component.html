@@ -372,8 +372,13 @@
               <span>{{ getSubmissionStatusLabel(submission.status) }}</span>
             </div>
 
-            <div class="submission-item__meta" *ngIf="submission.grade !== null || submission.teacherComment">
-              <span *ngIf="submission.grade !== null">Оценка: {{ submission.grade }}</span>
+            <div class="submission-item__meta">
+              <span *ngIf="submission.grade !== null; else submissionNotGraded">
+                Оценка: {{ submission.grade }}
+              </span>
+              <ng-template #submissionNotGraded>
+                <span>Преподаватель еще не оценил решение</span>
+              </ng-template>
               <span *ngIf="submission.teacherComment">Комментарий: {{ submission.teacherComment }}</span>
             </div>
 

@@ -9,7 +9,7 @@
 
   <div class="course-topbar">
     <div class="course-topbar__left">
-      <button type="button" class="back-btn" (click)="back()">← Назад к курсам</button>
+      <button type="button" class="back-btn" (click)="back()">Назад к курсам</button>
     </div>
 
     <div class="course-topbar__right">
@@ -57,14 +57,20 @@
       <div class="assignments-section__header">
         <h2 class="assignments-section__title">Задания курса</h2>
 
-        <button
-          *ngIf="isAdmin()"
-          type="button"
-          class="add-assignment-btn"
-          (click)="openCreateAssignmentModal()"
-        >
-          Добавить задание
-        </button>
+        <div class="assignments-section__actions">
+          <button type="button" class="secondary-action-btn" (click)="openGrades()">
+            Журнал оценок
+          </button>
+
+          <button
+            *ngIf="isAdmin()"
+            type="button"
+            class="add-assignment-btn"
+            (click)="openCreateAssignmentModal()"
+          >
+            Добавить задание
+          </button>
+        </div>
       </div>
 
       <div class="assignments-loading" *ngIf="isAssignmentsLoading()">Загрузка заданий...</div>
@@ -100,7 +106,7 @@
           (click)="goToNextPage()"
           [disabled]="currentPage() === totalPages()"
         >
-          Вперёд
+          Вперед
         </button>
       </div>
     </section>

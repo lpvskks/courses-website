@@ -1,0 +1,93 @@
+<section class="course-grades-page">
+  <div class="course-grades-page__topbar">
+    <button type="button" class="back-btn" (click)="back()">Назад к курсу</button>
+  </div>
+
+  <section class="grades-hero">
+    <div>
+      <span class="grades-hero__eyebrow">Курс</span>
+      <h1 class="grades-hero__title">Журнал оценок</h1>
+      <p class="grades-hero__subtitle" *ngIf="course() as currentCourse">
+        {{ currentCourse.name }}
+      </p>
+      <p class="grades-hero__subtitle" *ngIf="!course() && isCourseLoading()">
+        Загружаем курс...
+      </p>
+    </div>
+  </section>
+
+  <div *ngIf="loadError()" class="banner banner--error">
+    {{ loadError() }}
+  </div>
+
+  <section class="grades-card">
+    <div class="grades-card__header">
+      <div>
+        <h2 class="grades-card__title">
+          {{ isStudent() ? 'Мои оценки' : 'Оценки студентов' }}
+        </h2>
+        <p class="grades-card__subtitle" *ngIf="isAdmin() || isTeacher()">
+          В журнал попадают только отправленные решения курса.
+        </p>
+        <p class="grades-card__subtitle" *ngIf="isStudent()">
+          Здесь отображаются ваши отправленные решения и оценки по ним.
+        </p>
+      </div>
+    </div>
+
+    <div class="loading-card" *ngIf="isGradesLoading()">Загружаем журнал...</div>
+
+    <div *ngIf="gradesError()" class="banner banner--error">
+      {{ gradesError() }}
+    </div>
+
+    <div
+      class="grades-table"
+      *ngIf="!isGradesLoading() && (isAdmin() || isTeacher()) && courseGrades().length"
+    >
+      <div class="grades-table__row grades-table__row--head">
+        <span>Студент</span>
+        <span>Задание</span>
+        <span>Оценка</span>
+      </div>
+
+      <div
+        class="grades-table__row"
+        *ngFor="let grade of courseGrades(); trackBy: trackByCourseGrade"
+      >
+        <span>{{ grade.studentName }}</span>
+        <span>{{ grade.assignmentTitle }}</span>
+        <span class="grade-pill" [class.grade-pill--empty]="grade.grade === null">
+          {{ getGradeLabel(grade.grade) }}
+        </span>
+      </div>
+    </div>
+
+    <div
+      class="grades-table grades-table--student"
+      *ngIf="!isGradesLoading() && isStudent() && myGrades().length"
+    >
+      <div class="grades-table__row grades-table__row--head">
+        <span>Задание</span>
+        <span>Оценка</span>
+      </div>
+
+      <div
+        class="grades-table__row"
+        *ngFor="let grade of myGrades(); trackBy: trackByMyGrade"
+      >
+        <span>{{ grade.assignmentTitle }}</span>
+        <span class="grade-pill" [class.grade-pill--empty]="grade.grade === null">
+          {{ getGradeLabel(grade.grade) }}
+        </span>
+      </div>
+    </div>
+
+    <div
+      class="empty-card"
+      *ngIf="!isGradesLoading() && !gradesError() && ((isStudent() && !myGrades().length) || ((isAdmin() || isTeacher()) && !courseGrades().length))"
+    >
+      В журнале пока нет отправленных решений.
+    </div>
+  </section>
+</section>

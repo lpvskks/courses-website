@@ -274,6 +274,16 @@ export class CourseDetailsComponent implements OnInit {
     this.router.navigate(['/courses', course.id, 'users']);
   }
 
+  openGrades(): void {
+    const course = this.course();
+
+    if (!course) {
+      return;
+    }
+
+    this.router.navigate(['/courses', course.id, 'grades']);
+  }
+
   leaveCourse(): void {
     const course = this.course();
 

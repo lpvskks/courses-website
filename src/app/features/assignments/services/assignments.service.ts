@@ -1,10 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import { Observable } from 'rxjs';
 
 import { Assignment, AssignmentSubmission } from '../../../core/models/assigment.model';
 import { AssignmentComment } from '../../../core/models/assignment-comment.model';
-import { MOCK_ASSIGNMENT_SUBMISSIONS } from '../mocks/assignment-submissions.mock';
 
 export interface CreateAssignmentRequest {
   courseId: string;
@@ -85,6 +84,16 @@ export interface AssignmentDraftState {
   completedAtUtc: string | null;
   teams: AssignmentTeam[];
   availableStudents: AssignmentTeamStudent[];
+}
+
+export interface SubmissionGrade {
+  submissionId: string;
+  assignmentId: string;
+  studentId: string;
+  grade: number | null;
+  teacherComment: string | null;
+  gradedByTeacherId: string | null;
+  gradedAtUtc: string | null;
 }
 
 @Injectable({
@@ -229,41 +238,23 @@ export class AssignmentsService {
   }
 
   getAssignmentSubmissions(assignmentId: string) {
-    const useMock = true;
-
-    if (useMock) {
-      return of(
-        MOCK_ASSIGNMENT_SUBMISSIONS.map((item) => ({
-          ...item,
-          assignmentId,
-        })),
-      );
-    }
-
-    return this.http.get<AssignmentSubmission[]>(`${this.baseUrl}/${assignmentId}/submissions`);
+    return this.http.get<AssignmentSubmission[]>(
+      `${this.rootUrl}/assignments/${assignmentId}/submissions`,
+    );
   }
 
   getAssignmentSubmissionById(assignmentId: string, submissionId: string) {
-    const useMock = true;
-
-    if (useMock) {
-      const item = MOCK_ASSIGNMENT_SUBMISSIONS.find((x) => x.id === submissionId);
-
-      return of({
-        ...item!,
-        assignmentId,
-      });
-    }
-
-    return this.http.get<AssignmentSubmission>(
-      `${this.baseUrl}/${assignmentId}/submissions/${submissionId}`,
-    );
+    return this.http.get<AssignmentSubmission>(`${this.submissionsUrl}/${submissionId}`);
   }
 
-  updateSubmissionGrade(submissionId: string, payload: { value: number }) {
-    return this.http.put<void>(
+  updateSubmissionGrade(submissionId: string, payload: { value: number; comment?: string | null }) {
+    return this.http.put<SubmissionGrade>(
       `http://111.88.155.34:5196/api/submissions/${submissionId}/grade`,
       payload,
     );
+  }
+
+  deleteSubmissionGrade(submissionId: string): Observable<void> {
+    return this.http.delete<void>(`${this.submissionsUrl}/${submissionId}/grade`);
   }
 }

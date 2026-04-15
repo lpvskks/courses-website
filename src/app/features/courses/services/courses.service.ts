@@ -24,6 +24,20 @@ export interface JoinCourseRequest {
   code: string;
 }
 
+export interface CourseStudentGrade {
+  studentId: string;
+  studentName: string;
+  assignmentId: string;
+  assignmentTitle: string;
+  grade: number | null;
+}
+
+export interface MyCourseGrade {
+  assignmentId: string;
+  assignmentTitle: string;
+  grade: number | null;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -74,6 +88,14 @@ export class CoursesService {
         pageSize,
       },
     });
+  }
+
+  getCourseGrades(courseId: string): Observable<CourseStudentGrade[]> {
+    return this.http.get<CourseStudentGrade[]>(`${this.baseUrl}/${courseId}/grades`);
+  }
+
+  getMyCourseGrades(courseId: string): Observable<MyCourseGrade[]> {
+    return this.http.get<MyCourseGrade[]>(`${this.baseUrl}/${courseId}/my-grades`);
   }
 
   archiveCourse(courseId: string): Observable<void> {

@@ -3,6 +3,12 @@
     <button type="button" class="back-btn" (click)="back()">← Назад к списку решений</button>
   </div>
 
+  <div class="empty-card" *ngIf="isLoading()">Загружаем решение...</div>
+
+  <div class="banner banner--error" *ngIf="loadError()">
+    {{ loadError() }}
+  </div>
+
   <ng-container *ngIf="submission() as currentSubmission">
     <section class="submission-hero">
       <div>
@@ -22,12 +28,19 @@
 
         <div class="meta-card">
           <span class="meta-card__label">Оценка</span>
-          <span class="meta-card__value">{{ currentSubmission.grade }}</span>
+          <span class="meta-card__value">
+            {{ currentSubmission.grade === null ? 'Преподаватель еще не оценил' : currentSubmission.grade }}
+          </span>
+        </div>
+
+        <div class="meta-card" *ngIf="currentSubmission.gradedAtUtc">
+          <span class="meta-card__label">Оценено</span>
+          <span class="meta-card__value">{{ currentSubmission.gradedAtUtc | date: 'dd.MM.yyyy HH:mm' }}</span>
         </div>
       </div>
     </section>
 
-    <section *ngIf="canGradeSubmission()" class="submission-grade-card">
+    <section *ngIf="canGradeSubmission()" class="submission-grade-card" [formGroup]="gradeForm">
       <div class="section-header">
         <h2 class="section-title">Выставить оценку</h2>
       </div>
@@ -36,12 +49,27 @@
         <button
           type="button"
           class="grade-chip"
-          *ngFor="let grade of grades(); trackBy: trackByGrade"
-          [class.grade-chip--active]="selectedGrade() === grade"
+          *ngFor="let grade of grades; trackBy: trackByGrade"
+          [class.grade-chip--active]="gradeForm.controls.value.getRawValue() === grade"
           (click)="selectGrade(grade)"
         >
           {{ grade }}
         </button>
+      </div>
+
+      <div class="grade-form">
+        <label class="grade-field grade-field--comment">
+          <span>Комментарий</span>
+          <textarea
+            rows="4"
+            formControlName="comment"
+            placeholder="Напишите комментарий к работе..."
+          ></textarea>
+        </label>
+      </div>
+
+      <div *ngIf="getGradeError()" class="banner banner--error banner--compact">
+        {{ getGradeError() }}
       </div>
 
       <div *ngIf="gradeError()" class="banner banner--error banner--compact">
@@ -55,13 +83,31 @@
       <div class="submission-grade-card__actions">
         <button
           type="button"
+          class="danger-btn"
+          *ngIf="currentSubmission.grade !== null"
+          (click)="deleteGrade()"
+          [disabled]="isSavingGrade() || isDeletingGrade()"
+        >
+          {{ isDeletingGrade() ? 'Удаляем...' : 'Удалить оценку' }}
+        </button>
+
+        <button
+          type="button"
           class="primary-btn"
           (click)="saveGrade()"
-          [disabled]="isSavingGrade() || selectedGrade() === null"
+          [disabled]="isSavingGrade() || isDeletingGrade() || gradeForm.invalid"
         >
           {{ isSavingGrade() ? 'Сохранение...' : 'Сохранить' }}
         </button>
       </div>
+    </section>
+
+    <section class="submission-grade-card" *ngIf="currentSubmission.teacherComment">
+      <div class="section-header">
+        <h2 class="section-title">Комментарий преподавателя</h2>
+      </div>
+
+      <p class="teacher-comment">{{ currentSubmission.teacherComment }}</p>
     </section>
 
     <section class="submission-files-card">

@@ -1,0 +1,157 @@
+.course-grades-page {
+  min-height: calc(100vh - 72px);
+  padding: 32px;
+  background:
+    radial-gradient(circle at top left, rgba(25, 118, 210, 0.10), transparent 28%),
+    linear-gradient(180deg, #f6faff 0%, #eef5ff 100%);
+}
+
+.course-grades-page__topbar {
+  margin-bottom: 18px;
+}
+
+.back-btn {
+  height: 42px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #005cbb;
+  box-shadow: 0 8px 24px rgba(0, 92, 187, 0.08);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.grades-hero,
+.grades-card {
+  border-radius: 28px;
+  padding: 24px;
+  margin-bottom: 22px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(208, 226, 255, 0.9);
+  box-shadow:
+    0 14px 40px rgba(0, 92, 187, 0.08),
+    0 4px 16px rgba(15, 23, 42, 0.04);
+}
+
+.grades-hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  margin-bottom: 12px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #eef5ff;
+  color: #005cbb;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.grades-hero__title,
+.grades-card__title {
+  margin: 0;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.grades-hero__title {
+  font-size: 34px;
+}
+
+.grades-card__title {
+  font-size: 24px;
+}
+
+.grades-hero__subtitle,
+.grades-card__subtitle {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.grades-card__header {
+  margin-bottom: 18px;
+}
+
+.grades-table {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.grades-table__row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.4fr) minmax(160px, 0.6fr);
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border: 1px solid #dbeafe;
+  color: #0f172a;
+}
+
+.grades-table--student .grades-table__row {
+  grid-template-columns: minmax(220px, 1fr) minmax(160px, 0.4fr);
+}
+
+.grades-table__row--head {
+  background: #eef5ff;
+  color: #1e3a5f;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.grade-pill {
+  justify-self: start;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  background: #eefbf3;
+  color: #15803d;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.grade-pill--empty {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.banner,
+.loading-card,
+.empty-card {
+  border-radius: 18px;
+  padding: 16px 18px;
+  background: white;
+  border: 1px solid #dbeafe;
+}
+
+.banner {
+  margin-bottom: 18px;
+}
+
+.banner--error {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+@media (max-width: 720px) {
+  .course-grades-page {
+    padding: 20px;
+  }
+
+  .grades-table__row,
+  .grades-table--student .grades-table__row {
+    grid-template-columns: 1fr;
+  }
+}

@@ -20,6 +20,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'courses/:courseId/grades',
+    loadComponent: () =>
+      import('./features/courses/pages/course-grades-page/course-grades-page.component').then(
+        (m) => m.CourseGradesPageComponent,
+      ),
+  },
+  {
     path: 'courses/:courseId/assignments/:assignmentId',
     loadComponent: () =>
       import('./features/assignments/pages/assignment-details-page/course-assignment-details.component').then(
