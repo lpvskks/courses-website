@@ -7,8 +7,8 @@ import { LoginRequest, LoginResponse, RegistrationRequest } from '../../../core/
   providedIn: 'root',
 })
 export class AuthService {
-  private readonly loginUrl = 'http://111.88.155.34:5196/api/auth/login';
-  private readonly usersUrl = 'http://111.88.155.34:5196/api/users';
+  private readonly loginUrl = 'http://localhost:5196/api/auth/login';
+  private readonly usersUrl = 'http://localhost:5196/api/users';
 
   constructor(private http: HttpClient) {}
 

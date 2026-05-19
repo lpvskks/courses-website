@@ -423,6 +423,15 @@
                   <button
                     type="button"
                     class="secondary-action-btn"
+                    (click)="openCreateCriterionForm(group)"
+                    [disabled]="!!deletingCriterionGroupId() || isSavingCriterion()"
+                  >
+                    Добавить критерий
+                  </button>
+
+                  <button
+                    type="button"
+                    class="secondary-action-btn"
                     (click)="startEditCriterionGroup(group)"
                     [disabled]="!!deletingCriterionGroupId()"
                   >
@@ -499,6 +508,220 @@
               </form>
             </ng-template>
 
+            <form
+              class="criterion-form"
+              *ngIf="isCriterionFormOpenFor(group.id)"
+              [formGroup]="criterionForm"
+              (ngSubmit)="saveCriterion(group)"
+            >
+              <div class="criterion-form__head">
+                <div>
+                  <span class="criteria-group-card__eyebrow">Критерий</span>
+                  <h4>{{ getCriterionFormTitle() }}</h4>
+                </div>
+
+                <button
+                  type="button"
+                  class="secondary-action-btn"
+                  (click)="cancelCriterionForm()"
+                  [disabled]="isSavingCriterion()"
+                >
+                  Отмена
+                </button>
+              </div>
+
+              <div class="criterion-form__grid">
+                <div class="criteria-field criteria-field--name">
+                  <label for="criterion-name">Название</label>
+                  <input
+                    id="criterion-name"
+                    type="text"
+                    formControlName="name"
+                    placeholder="Например: Приложение запускается"
+                  />
+                  <span class="field-error" *ngIf="getCriterionNameError()">
+                    {{ getCriterionNameError() }}
+                  </span>
+                </div>
+
+                <div class="criteria-field">
+                  <label for="criterion-type">Тип</label>
+                  <select
+                    id="criterion-type"
+                    formControlName="type"
+                    (change)="onCriterionTypeChanged()"
+                  >
+                    <option value="pass_fail">Чекбокс</option>
+                    <option value="score">Диапазон</option>
+                    <option value="option">Выбор варианта</option>
+                    <option value="multiplier">Множитель</option>
+                  </select>
+                </div>
+
+                <div class="criteria-field">
+                  <label for="criterion-category">Категория</label>
+                  <select
+                    id="criterion-category"
+                    formControlName="category"
+                    [disabled]="getCriterionFormType() === 'multiplier'"
+                  >
+                    <option value="main">Основной</option>
+                    <option value="bonus">Бонус</option>
+                    <option value="penalty">Штраф</option>
+                    <option value="multiplier">Множитель</option>
+                  </select>
+                </div>
+
+                <div class="criteria-field">
+                  <label for="criterion-max-score">Макс. баллы</label>
+                  <input
+                    id="criterion-max-score"
+                    type="number"
+                    min="1"
+                    formControlName="maxScore"
+                    [readonly]="getCriterionFormType() === 'multiplier'"
+                  />
+                </div>
+
+                <div class="criteria-field">
+                  <label for="criterion-sort-order">Порядок</label>
+                  <input
+                    id="criterion-sort-order"
+                    type="number"
+                    min="0"
+                    formControlName="sortOrder"
+                  />
+                </div>
+
+                <div class="criteria-field criteria-field--description">
+                  <label for="criterion-description">Описание</label>
+                  <input
+                    id="criterion-description"
+                    type="text"
+                    formControlName="description"
+                    placeholder="Пояснение для проверяющего"
+                  />
+                </div>
+              </div>
+
+              <div class="criterion-settings" *ngIf="getCriterionFormType() === 'pass_fail'">
+                <div class="criterion-settings__title">Баллы за состояния</div>
+
+                <div class="criterion-form__grid criterion-form__grid--small">
+                  <div class="criteria-field">
+                    <label for="criterion-pass-score">Выполнен</label>
+                    <input id="criterion-pass-score" type="number" min="0" formControlName="passScore" />
+                  </div>
+
+                  <div class="criteria-field">
+                    <label for="criterion-fail-score">Не выполнен</label>
+                    <input id="criterion-fail-score" type="number" min="0" formControlName="failScore" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="criterion-settings" *ngIf="getCriterionFormType() === 'score'">
+                <div class="criterion-settings__title">Диапазон значений</div>
+
+                <div class="criterion-form__grid criterion-form__grid--small">
+                  <div class="criteria-field">
+                    <label for="criterion-score-min">Минимум</label>
+                    <input id="criterion-score-min" type="number" min="0" formControlName="scoreMinValue" />
+                  </div>
+
+                  <div class="criteria-field">
+                    <label for="criterion-score-max">Максимум</label>
+                    <input id="criterion-score-max" type="number" min="1" formControlName="scoreMaxValue" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="criterion-settings" *ngIf="getCriterionFormType() === 'option'">
+                <div class="criterion-settings__head">
+                  <div class="criterion-settings__title">Варианты ответа</div>
+
+                  <button type="button" class="secondary-action-btn" (click)="addOptionRow()">
+                    Добавить вариант
+                  </button>
+                </div>
+
+                <div class="criterion-option-list">
+                  <div
+                    class="criterion-option-row"
+                    *ngFor="let option of optionRows(); let optionIndex = index"
+                  >
+                    <div class="criteria-field">
+                      <label>Код</label>
+                      <input
+                        type="text"
+                        [value]="option.value"
+                        (input)="updateOptionRow(optionIndex, 'value', $event)"
+                      />
+                    </div>
+
+                    <div class="criteria-field">
+                      <label>Название</label>
+                      <input
+                        type="text"
+                        [value]="option.label"
+                        (input)="updateOptionRow(optionIndex, 'label', $event)"
+                      />
+                    </div>
+
+                    <div class="criteria-field">
+                      <label>Баллы</label>
+                      <input
+                        type="number"
+                        min="0"
+                        [value]="option.score"
+                        (input)="updateOptionRow(optionIndex, 'score', $event)"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      class="small-danger-btn"
+                      (click)="removeOptionRow(optionIndex)"
+                      [disabled]="optionRows().length <= 1"
+                    >
+                      Удалить
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="criterion-settings" *ngIf="getCriterionFormType() === 'multiplier'">
+                <div class="criterion-settings__title">Коэффициент</div>
+
+                <div class="criterion-form__grid criterion-form__grid--small">
+                  <div class="criteria-field">
+                    <label for="criterion-multiplier">Множитель</label>
+                    <input
+                      id="criterion-multiplier"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      formControlName="multiplier"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div *ngIf="getCriterionScoreError()" class="banner banner--error banner--compact">
+                {{ getCriterionScoreError() }}
+              </div>
+
+              <div class="criterion-form__actions">
+                <button
+                  type="submit"
+                  class="primary-btn"
+                  [disabled]="isSavingCriterion() || criterionForm.invalid"
+                >
+                  {{ isSavingCriterion() ? 'Сохраняем...' : 'Сохранить критерий' }}
+                </button>
+              </div>
+            </form>
+
             <div class="criteria-list" *ngIf="group.criteria.length; else emptyCriteriaGroup">
               <article
                 class="criterion-row"
@@ -513,6 +736,30 @@
                   <span>{{ getCriterionTypeLabel(criterion.type) }}</span>
                   <span>{{ getCriterionCategoryLabel(criterion.category) }}</span>
                   <strong>{{ criterion.maxScore }} балл.</strong>
+                </div>
+
+                <div class="criterion-row__actions">
+                  <button
+                    type="button"
+                    class="secondary-action-btn"
+                    (click)="startEditCriterion(group, criterion)"
+                    [disabled]="isSavingCriterion() || !!deletingCriterionId()"
+                  >
+                    Изменить
+                  </button>
+
+                  <button
+                    type="button"
+                    class="small-danger-btn"
+                    (click)="deleteCriterion(criterion)"
+                    [disabled]="isSavingCriterion() || !!deletingCriterionId()"
+                  >
+                    {{
+                      deletingCriterionId() === criterion.id
+                        ? 'Удаляем...'
+                        : 'Удалить'
+                    }}
+                  </button>
                 </div>
               </article>
             </div>

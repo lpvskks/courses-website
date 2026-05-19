@@ -5,9 +5,11 @@ import { Observable } from 'rxjs';
 import { Assignment, AssignmentSubmission } from '../../../core/models/assigment.model';
 import { AssignmentComment } from '../../../core/models/assignment-comment.model';
 import {
+  CreateCriterionRequest,
   CreateCriterionGroupRequest,
   Criterion,
   CriterionGroup,
+  UpdateCriterionRequest,
   UpdateCriterionGroupRequest,
 } from '../../../core/models/grading.model';
 
@@ -107,7 +109,7 @@ export interface SubmissionGrade {
 })
 export class AssignmentsService {
   private readonly http = inject(HttpClient);
- private readonly rootUrl = 'http://111.88.155.34:5196';
+private readonly rootUrl = 'http://111.88.155.34:5196';
   private readonly baseUrl = 'http://111.88.155.34:5196/api/assignments';
   private readonly submissionsUrl = 'http://111.88.155.34:5196/api/submissions';
 
@@ -148,6 +150,24 @@ export class AssignmentsService {
     return this.http.get<Criterion[]>(
       `${this.rootUrl}/api/criterion-groups/${criterionGroupId}/criteria`,
     );
+  }
+
+  createCriterion(
+    criterionGroupId: string,
+    payload: CreateCriterionRequest,
+  ): Observable<Criterion> {
+    return this.http.post<Criterion>(
+      `${this.rootUrl}/api/criterion-groups/${criterionGroupId}/criteria`,
+      payload,
+    );
+  }
+
+  updateCriterion(criterionId: string, payload: UpdateCriterionRequest): Observable<Criterion> {
+    return this.http.put<Criterion>(`${this.rootUrl}/api/criteria/${criterionId}`, payload);
+  }
+
+  deleteCriterion(criterionId: string): Observable<void> {
+    return this.http.delete<void>(`${this.rootUrl}/api/criteria/${criterionId}`);
   }
 
   getMyCaptainInfo(assignmentId: string): Observable<AssignmentCaptainInfo> {
@@ -286,7 +306,7 @@ export class AssignmentsService {
 
   updateSubmissionGrade(submissionId: string, payload: { value: number; comment?: string | null }) {
     return this.http.put<SubmissionGrade>(
-      `http://111.88.155.34:5196/api/submissions/${submissionId}/grade`,
+      `http://localhost:5196/api/submissions/${submissionId}/grade`,
       payload,
     );
   }

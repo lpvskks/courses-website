@@ -14,7 +14,16 @@ import { forkJoin, timer } from 'rxjs';
 
 import { Assignment, AssignmentSubmission, SubmissionFile } from '../../../../core/models/assigment.model';
 import { AssignmentComment } from '../../../../core/models/assignment-comment.model';
-import { Criterion, CriterionGroupWithCriteria } from '../../../../core/models/grading.model';
+import {
+  ChoiceCriterionSettings,
+  Criterion,
+  CriterionCategory,
+  CriterionGroupWithCriteria,
+  CriterionSettings,
+  CriterionType,
+  MultiplierCriterionSettings,
+  ScoreCriterionSettings,
+} from '../../../../core/models/grading.model';
 import {
   AssignmentCaptainInfo,
   CaptainTeam,
@@ -114,6 +123,14 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   teamModalError = signal('');
   selectedTeamForMembersId = signal<string | null>(null);
   editingCriterionGroupId = signal<string | null>(null);
+  criterionFormGroupId = signal<string | null>(null);
+  editingCriterionId = signal<string | null>(null);
+  isSavingCriterion = signal(false);
+  deletingCriterionId = signal<string | null>(null);
+  optionRows = signal<CriterionOptionRow[]>([
+    { value: 'option_1', label: 'Вариант 1', score: 0 },
+    { value: 'option_2', label: 'Вариант 2', score: 0 },
+  ]);
 
   readonly commentForm = this.fb.nonNullable.group({
     text: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(1000)]],
@@ -134,6 +151,20 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     name: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]],
     description: ['', [Validators.maxLength(2000)]],
     sortOrder: [0, [Validators.required, Validators.min(0)]],
+  });
+
+  readonly criterionForm = this.fb.nonNullable.group({
+    name: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]],
+    description: ['', [Validators.maxLength(2000)]],
+    type: ['pass_fail' as CriterionType, [Validators.required]],
+    category: ['main' as CriterionCategory, [Validators.required]],
+    maxScore: [10, [Validators.required, Validators.min(1)]],
+    sortOrder: [0, [Validators.required, Validators.min(0)]],
+    scoreMinValue: [0, [Validators.required, Validators.min(0)]],
+    scoreMaxValue: [10, [Validators.required, Validators.min(1)]],
+    passScore: [10, [Validators.required, Validators.min(0)]],
+    failScore: [0, [Validators.required, Validators.min(0)]],
+    multiplier: [1, [Validators.required, Validators.min(0)]],
   });
 
   readonly selectedTeamStudents = computed(() => {
@@ -298,8 +329,13 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     this.isCriteriaSettingsLoading.set(false);
     this.isCreatingCriterionGroup.set(false);
     this.isSavingCriterionGroup.set(false);
+    this.isSavingCriterion.set(false);
+    this.criterionFormGroupId.set(null);
+    this.editingCriterionId.set(null);
+    this.deletingCriterionId.set(null);
     this.criterionGroupForm.reset({ name: '', description: '', sortOrder: 0 });
     this.editCriterionGroupForm.reset({ name: '', description: '', sortOrder: 0 });
+    this.resetCriterionForm();
   }
 
   loadCriteriaSettingsIfAvailable(assignment: Assignment): void {
@@ -466,6 +502,216 @@ export class CourseAssignmentDetailsComponent implements OnInit {
         this.criteriaSettingsError.set(this.getApiErrorMessage(err, 'Не удалось удалить группу критериев'));
       },
     });
+  }
+
+  openCreateCriterionForm(group: CriterionGroupWithCriteria): void {
+    this.criteriaSettingsError.set('');
+    this.criteriaSettingsSuccess.set('');
+    this.editingCriterionId.set(null);
+    this.criterionFormGroupId.set(group.id);
+    this.resetCriterionForm(group.criteria.length);
+  }
+
+  startEditCriterion(group: CriterionGroupWithCriteria, criterion: Criterion): void {
+    this.criteriaSettingsError.set('');
+    this.criteriaSettingsSuccess.set('');
+    this.criterionFormGroupId.set(group.id);
+    this.editingCriterionId.set(criterion.id);
+    this.fillCriterionForm(criterion);
+  }
+
+  cancelCriterionForm(): void {
+    if (this.isSavingCriterion()) {
+      return;
+    }
+
+    this.criterionFormGroupId.set(null);
+    this.editingCriterionId.set(null);
+    this.resetCriterionForm();
+  }
+
+  saveCriterion(group: CriterionGroupWithCriteria): void {
+    const assignment = this.assignment();
+    this.criteriaSettingsError.set('');
+    this.criteriaSettingsSuccess.set('');
+    this.criterionForm.markAllAsTouched();
+
+    if (!assignment || this.criterionForm.invalid || this.isSavingCriterion()) {
+      return;
+    }
+
+    const settings = this.buildCriterionSettings();
+    if (!settings) {
+      return;
+    }
+
+    const type = this.getCriterionFormType();
+    const maxScore = this.resolveCriterionMaxScore(type);
+    const payload = {
+      name: this.criterionForm.controls.name.getRawValue().trim(),
+      description: this.criterionForm.controls.description.getRawValue().trim() || null,
+      type,
+      category: this.resolveCriterionCategory(type),
+      settings,
+      maxScore,
+      sortOrder: this.criterionForm.controls.sortOrder.getRawValue(),
+    };
+    const editingCriterionId = this.editingCriterionId();
+    const request$ = editingCriterionId
+      ? this.assignmentsService.updateCriterion(editingCriterionId, payload)
+      : this.assignmentsService.createCriterion(group.id, payload);
+
+    this.isSavingCriterion.set(true);
+
+    request$.subscribe({
+      next: () => {
+        this.isSavingCriterion.set(false);
+        this.criterionFormGroupId.set(null);
+        this.editingCriterionId.set(null);
+        this.criteriaSettingsSuccess.set(
+          editingCriterionId ? 'Критерий обновлен' : 'Критерий добавлен',
+        );
+        this.loadCriteriaSettings(assignment.id);
+      },
+      error: (err) => {
+        console.error(err);
+        this.isSavingCriterion.set(false);
+        this.criteriaSettingsError.set(this.getApiErrorMessage(err, 'Не удалось сохранить критерий'));
+      },
+    });
+  }
+
+  deleteCriterion(criterion: Criterion): void {
+    const assignment = this.assignment();
+
+    if (!assignment || this.deletingCriterionId()) {
+      return;
+    }
+
+    this.criteriaSettingsError.set('');
+    this.criteriaSettingsSuccess.set('');
+    this.deletingCriterionId.set(criterion.id);
+
+    this.assignmentsService.deleteCriterion(criterion.id).subscribe({
+      next: () => {
+        this.deletingCriterionId.set(null);
+        this.criteriaSettingsSuccess.set('Критерий удален');
+        this.loadCriteriaSettings(assignment.id);
+      },
+      error: (err) => {
+        console.error(err);
+        this.deletingCriterionId.set(null);
+        this.criteriaSettingsError.set(this.getApiErrorMessage(err, 'Не удалось удалить критерий'));
+      },
+    });
+  }
+
+  onCriterionTypeChanged(): void {
+    const type = this.getCriterionFormType();
+
+    if (type === 'multiplier') {
+      this.criterionForm.controls.category.setValue('multiplier');
+      this.criterionForm.controls.maxScore.setValue(1);
+      return;
+    }
+
+    if (this.criterionForm.controls.category.getRawValue() === 'multiplier') {
+      this.criterionForm.controls.category.setValue('main');
+    }
+
+    if (type === 'score') {
+      this.criterionForm.controls.scoreMaxValue.setValue(
+        this.criterionForm.controls.maxScore.getRawValue(),
+      );
+    }
+  }
+
+  addOptionRow(): void {
+    const nextIndex = this.optionRows().length + 1;
+    this.optionRows.update((rows) => [
+      ...rows,
+      { value: `option_${nextIndex}`, label: `Вариант ${nextIndex}`, score: 0 },
+    ]);
+  }
+
+  removeOptionRow(index: number): void {
+    if (this.optionRows().length <= 1) {
+      return;
+    }
+
+    this.optionRows.update((rows) => rows.filter((_, rowIndex) => rowIndex !== index));
+  }
+
+  updateOptionRow(
+    index: number,
+    field: keyof CriterionOptionRow,
+    event: Event,
+  ): void {
+    const target = event.target as HTMLInputElement;
+    const value = field === 'score' ? Number(target.value) : target.value;
+
+    this.optionRows.update((rows) =>
+      rows.map((row, rowIndex) =>
+        rowIndex === index
+          ? {
+              ...row,
+              [field]: value,
+            }
+          : row,
+      ),
+    );
+  }
+
+  resetCriterionForm(nextSortOrder = 0): void {
+    this.criterionForm.reset({
+      name: '',
+      description: '',
+      type: 'pass_fail',
+      category: 'main',
+      maxScore: 10,
+      sortOrder: nextSortOrder,
+      scoreMinValue: 0,
+      scoreMaxValue: 10,
+      passScore: 10,
+      failScore: 0,
+      multiplier: 1,
+    });
+    this.optionRows.set([
+      { value: 'option_1', label: 'Вариант 1', score: 0 },
+      { value: 'option_2', label: 'Вариант 2', score: 0 },
+    ]);
+  }
+
+  fillCriterionForm(criterion: Criterion): void {
+    const type = this.normalizeCriterionType(criterion.type);
+    const settings = criterion.settings as Partial<
+      ScoreCriterionSettings & ChoiceCriterionSettings & MultiplierCriterionSettings
+    >;
+
+    this.criterionForm.reset({
+      name: criterion.name,
+      description: criterion.description ?? '',
+      type,
+      category: this.normalizeCriterionCategory(criterion.category),
+      maxScore: criterion.maxScore,
+      sortOrder: criterion.sortOrder,
+      scoreMinValue: settings.minValue ?? 0,
+      scoreMaxValue: settings.maxValue ?? criterion.maxScore,
+      passScore: settings.scoreMappings?.find((mapping) => mapping.value === 'pass')?.score ?? criterion.maxScore,
+      failScore: settings.scoreMappings?.find((mapping) => mapping.value === 'fail')?.score ?? 0,
+      multiplier: settings.coefficient ?? settings.multiplier ?? 1,
+    });
+
+    if (type === 'option') {
+      this.optionRows.set(
+        (settings.options ?? []).map((option) => ({
+          value: option.value,
+          label: option.label ?? option.value,
+          score:
+            settings.scoreMappings?.find((mapping) => mapping.value === option.value)?.score ?? 0,
+        })),
+      );
+    }
   }
 
   loadTeamsIfAvailable(assignment: Assignment): void {
@@ -1863,6 +2109,149 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     }
   }
 
+  getCriterionFormType(): CriterionType {
+    return this.normalizeCriterionType(this.criterionForm.controls.type.getRawValue());
+  }
+
+  isCriterionFormOpenFor(groupId: string): boolean {
+    return this.criterionFormGroupId() === groupId;
+  }
+
+  getCriterionFormTitle(): string {
+    return this.editingCriterionId() ? 'Редактировать критерий' : 'Новый критерий';
+  }
+
+  getCriterionNameError(): string {
+    const control = this.criterionForm.controls.name;
+
+    if (!control.touched || !control.errors) return '';
+    if (control.errors['required']) return 'Введите название критерия';
+    if (control.errors['minlength']) return 'Название должно быть не короче 2 символов';
+    if (control.errors['maxlength']) return 'Название должно быть не длиннее 200 символов';
+    return '';
+  }
+
+  getCriterionScoreError(): string {
+    const type = this.getCriterionFormType();
+
+    if (type === 'score') {
+      const min = this.criterionForm.controls.scoreMinValue.getRawValue();
+      const max = this.criterionForm.controls.scoreMaxValue.getRawValue();
+
+      if (max <= min) {
+        return 'Максимум диапазона должен быть больше минимума';
+      }
+    }
+
+    if (type === 'pass_fail') {
+      const maxScore = this.criterionForm.controls.maxScore.getRawValue();
+      const passScore = this.criterionForm.controls.passScore.getRawValue();
+      const failScore = this.criterionForm.controls.failScore.getRawValue();
+
+      if (passScore > maxScore || failScore > maxScore) {
+        return 'Баллы не должны быть больше максимального значения';
+      }
+    }
+
+    if (type === 'option') {
+      const maxScore = this.criterionForm.controls.maxScore.getRawValue();
+      const hasEmptyValue = this.optionRows().some((row) => !row.value.trim());
+      const hasTooLargeScore = this.optionRows().some((row) => row.score > maxScore);
+
+      if (hasEmptyValue) {
+        return 'У каждого варианта должен быть код';
+      }
+
+      if (hasTooLargeScore) {
+        return 'Баллы вариантов не должны быть больше максимального значения';
+      }
+    }
+
+    return '';
+  }
+
+  private buildCriterionSettings(): CriterionSettings | null {
+    const type = this.getCriterionFormType();
+    const scoreError = this.getCriterionScoreError();
+
+    if (scoreError) {
+      this.criteriaSettingsError.set(scoreError);
+      return null;
+    }
+
+    if (type === 'score') {
+      const minValue = this.criterionForm.controls.scoreMinValue.getRawValue();
+      const maxValue = this.criterionForm.controls.scoreMaxValue.getRawValue();
+
+      return {
+        minValue,
+        maxValue,
+        selectedValue: minValue,
+        ranges: null,
+      };
+    }
+
+    if (type === 'pass_fail') {
+      return {
+        options: [
+          { value: 'pass', label: 'Выполнен' },
+          { value: 'fail', label: 'Не выполнен' },
+        ],
+        scoreMappings: [
+          { value: 'pass', score: this.criterionForm.controls.passScore.getRawValue() },
+          { value: 'fail', score: this.criterionForm.controls.failScore.getRawValue() },
+        ],
+      };
+    }
+
+    if (type === 'option') {
+      const rows = this.optionRows().map((row) => ({
+        value: row.value.trim(),
+        label: row.label.trim() || row.value.trim(),
+        score: row.score,
+      }));
+
+      return {
+        options: rows.map((row) => ({ value: row.value, label: row.label })),
+        scoreMappings: rows.map((row) => ({ value: row.value, score: row.score })),
+      };
+    }
+
+    return {
+      coefficient: this.criterionForm.controls.multiplier.getRawValue(),
+    };
+  }
+
+  private resolveCriterionMaxScore(type: CriterionType): number {
+    if (type === 'score') {
+      return this.criterionForm.controls.scoreMaxValue.getRawValue();
+    }
+
+    if (type === 'multiplier') {
+      return 1;
+    }
+
+    return this.criterionForm.controls.maxScore.getRawValue();
+  }
+
+  private resolveCriterionCategory(type: CriterionType): CriterionCategory {
+    return type === 'multiplier'
+      ? 'multiplier'
+      : this.normalizeCriterionCategory(this.criterionForm.controls.category.getRawValue());
+  }
+
+  private normalizeCriterionType(type: string): CriterionType {
+    return type === 'score' || type === 'option' || type === 'multiplier'
+      ? type
+      : 'pass_fail';
+  }
+
+  private normalizeCriterionCategory(category: string): CriterionCategory {
+    return category === 'bonus' || category === 'penalty' || category === 'multiplier'
+      ? category
+      : 'main';
+  }
+
   getCriterionGroupNameError(): string {
     const control = this.criterionGroupForm.controls.name;
 
@@ -1938,5 +2327,11 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   trackByCaptainTeamMemberId(_: number, member: CaptainTeamMemberSubmissions): string {
     return member.userId;
   }
+}
+
+interface CriterionOptionRow {
+  value: string;
+  label: string;
+  score: number;
 }
 
