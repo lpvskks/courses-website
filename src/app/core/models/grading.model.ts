@@ -18,6 +18,29 @@ export interface CriterionScoreMapping {
   score: number;
 }
 
+export interface ScoreCriterionSettings {
+  minValue: number;
+  maxValue: number;
+  selectedValue: number;
+  multiplier?: number | null;
+  ranges?: CriterionRange[] | null;
+}
+
+export interface ChoiceCriterionSettings {
+  multiplier?: number | null;
+  options: CriterionOption[];
+  scoreMappings: CriterionScoreMapping[];
+}
+
+export interface MultiplierCriterionSettings {
+  coefficient: number;
+}
+
+export type CriterionSettings =
+  | ScoreCriterionSettings
+  | ChoiceCriterionSettings
+  | MultiplierCriterionSettings;
+
 export interface Criterion {
   id: string;
   criterionGroupId: string;
@@ -53,5 +76,25 @@ export interface CreateCriterionGroupRequest {
 export interface UpdateCriterionGroupRequest {
   name?: string | null;
   description?: string | null;
+  sortOrder?: number | null;
+}
+
+export interface CreateCriterionRequest {
+  name: string;
+  description?: string | null;
+  type: CriterionType;
+  category?: CriterionCategory | null;
+  settings: CriterionSettings;
+  maxScore: number;
+  sortOrder: number;
+}
+
+export interface UpdateCriterionRequest {
+  name?: string | null;
+  description?: string | null;
+  type?: CriterionType | null;
+  category?: CriterionCategory | null;
+  settings?: CriterionSettings | null;
+  maxScore?: number | null;
   sortOrder?: number | null;
 }
