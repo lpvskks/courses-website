@@ -19,12 +19,11 @@
   <section *ngIf="!isLoading() && unavailableAssignmentNotice()" class="assignment-unavailable-card">
     <div class="assignment-unavailable-card__eyebrow">Задание</div>
     <h1 class="assignment-unavailable-card__title">Задание пока недоступно</h1>
-    <p class="assignment-unavailable-card__text">
-      Сейчас идет выбор капитанов. Можно назначить себя капитаном команды, а само задание
-      откроется позже.
-    </p>
-
     <ng-container *ngIf="assignment() as currentAssignment">
+      <p class="assignment-unavailable-card__text">
+        {{ getUnavailableAssignmentText(currentAssignment) }}
+      </p>
+
       <div
         class="student-stage-card"
         *ngIf="canViewSelfSelectionTeams(currentAssignment) && isStudent()"
@@ -80,14 +79,16 @@
           <span class="captain-panel__status" *ngIf="!isCaptainInfoLoading() && captainInfo()">
             {{ getCaptainPanelStatus() }}
           </span>
+          <span class="captain-panel__status" *ngIf="!isCaptainInfoLoading() && !captainInfo()">
+            Статус капитана пока не загружен
+          </span>
         </div>
 
         <button
           type="button"
           class="captain-panel__button"
-          *ngIf="captainInfo()"
           (click)="toggleCaptainRole()"
-          [disabled]="isCaptainActionLoading()"
+          [disabled]="isCaptainActionLoading() || isCaptainInfoLoading() || !captainInfo()"
         >
           {{ getCaptainActionLabel() }}
         </button>
@@ -257,14 +258,16 @@
               <span class="captain-panel__status" *ngIf="!isCaptainInfoLoading() && captainInfo()">
                 {{ getCaptainPanelStatus() }}
               </span>
+              <span class="captain-panel__status" *ngIf="!isCaptainInfoLoading() && !captainInfo()">
+                Статус капитана пока не загружен
+              </span>
             </div>
 
             <button
               type="button"
               class="captain-panel__button"
-              *ngIf="captainInfo()"
               (click)="toggleCaptainRole()"
-              [disabled]="isCaptainActionLoading()"
+              [disabled]="isCaptainActionLoading() || isCaptainInfoLoading() || !captainInfo()"
             >
               {{ getCaptainActionLabel() }}
             </button>
@@ -328,6 +331,198 @@
           </a>
         </div>
       </div>
+    </section>
+
+    <section class="criteria-settings-card" *ngIf="canManageCriteriaSettings()">
+      <div class="section-header criteria-settings-card__header">
+        <div>
+          <h2 class="section-title">Критерии оценивания</h2>
+          <p class="section-subtitle">
+            Группы и критерии, по которым будет проверяться решение.
+          </p>
+        </div>
+
+        <span class="section-count">{{ getCriteriaTotalCount() }}</span>
+      </div>
+
+      <div *ngIf="criteriaSettingsError()" class="banner banner--error">
+        {{ criteriaSettingsError() }}
+      </div>
+
+      <div *ngIf="criteriaSettingsSuccess()" class="banner banner--success">
+        {{ criteriaSettingsSuccess() }}
+      </div>
+
+      <form
+        class="criteria-group-form"
+        [formGroup]="criterionGroupForm"
+        (ngSubmit)="createCriterionGroup()"
+      >
+        <div class="criteria-field criteria-field--name">
+          <label for="criterion-group-name">Новая группа</label>
+          <input
+            id="criterion-group-name"
+            type="text"
+            formControlName="name"
+            placeholder="Например: Функциональность"
+          />
+          <span class="field-error" *ngIf="getCriterionGroupNameError()">
+            {{ getCriterionGroupNameError() }}
+          </span>
+        </div>
+
+        <div class="criteria-field criteria-field--description">
+          <label for="criterion-group-description">Описание</label>
+          <input
+            id="criterion-group-description"
+            type="text"
+            formControlName="description"
+            placeholder="Короткое пояснение для проверяющего"
+          />
+        </div>
+
+        <div class="criteria-field criteria-field--order">
+          <label for="criterion-group-sort">Порядок</label>
+          <input id="criterion-group-sort" type="number" min="0" formControlName="sortOrder" />
+        </div>
+
+        <button
+          type="submit"
+          class="primary-btn"
+          [disabled]="isCreatingCriterionGroup() || criterionGroupForm.invalid"
+        >
+          {{ isCreatingCriterionGroup() ? 'Добавляем...' : 'Добавить группу' }}
+        </button>
+      </form>
+
+      <div class="loading-card" *ngIf="isCriteriaSettingsLoading()">
+        Загружаем критерии...
+      </div>
+
+      <ng-container *ngIf="!isCriteriaSettingsLoading()">
+        <div class="empty-card" *ngIf="!criterionGroups().length">
+          Групп критериев пока нет.
+        </div>
+
+        <div class="criteria-groups-list" *ngIf="criterionGroups().length">
+          <article
+            class="criteria-group-card"
+            *ngFor="let group of criterionGroups(); trackBy: trackByCriterionGroupId"
+          >
+            <ng-container *ngIf="editingCriterionGroupId() !== group.id; else editCriterionGroup">
+              <div class="criteria-group-card__head">
+                <div>
+                  <div class="criteria-group-card__eyebrow">Группа {{ group.sortOrder }}</div>
+                  <h3 class="criteria-group-card__title">{{ group.name }}</h3>
+                  <p class="criteria-group-card__description" *ngIf="group.description">
+                    {{ group.description }}
+                  </p>
+                </div>
+
+                <div class="criteria-group-card__actions">
+                  <button
+                    type="button"
+                    class="secondary-action-btn"
+                    (click)="startEditCriterionGroup(group)"
+                    [disabled]="!!deletingCriterionGroupId()"
+                  >
+                    Изменить
+                  </button>
+
+                  <button
+                    type="button"
+                    class="small-danger-btn"
+                    (click)="deleteCriterionGroup(group)"
+                    [disabled]="!!deletingCriterionGroupId() || isSavingCriterionGroup()"
+                  >
+                    {{
+                      deletingCriterionGroupId() === group.id
+                        ? 'Удаляем...'
+                        : 'Удалить'
+                    }}
+                  </button>
+                </div>
+              </div>
+            </ng-container>
+
+            <ng-template #editCriterionGroup>
+              <form
+                class="criteria-group-edit"
+                [formGroup]="editCriterionGroupForm"
+                (ngSubmit)="saveCriterionGroup(group)"
+              >
+                <div class="criteria-field criteria-field--name">
+                  <label for="edit-criterion-group-name">Название</label>
+                  <input id="edit-criterion-group-name" type="text" formControlName="name" />
+                  <span class="field-error" *ngIf="getEditCriterionGroupNameError()">
+                    {{ getEditCriterionGroupNameError() }}
+                  </span>
+                </div>
+
+                <div class="criteria-field criteria-field--description">
+                  <label for="edit-criterion-group-description">Описание</label>
+                  <input
+                    id="edit-criterion-group-description"
+                    type="text"
+                    formControlName="description"
+                  />
+                </div>
+
+                <div class="criteria-field criteria-field--order">
+                  <label for="edit-criterion-group-sort">Порядок</label>
+                  <input
+                    id="edit-criterion-group-sort"
+                    type="number"
+                    min="0"
+                    formControlName="sortOrder"
+                  />
+                </div>
+
+                <div class="criteria-group-edit__actions">
+                  <button
+                    type="button"
+                    class="secondary-action-btn"
+                    (click)="cancelEditCriterionGroup()"
+                    [disabled]="isSavingCriterionGroup()"
+                  >
+                    Отмена
+                  </button>
+
+                  <button
+                    type="submit"
+                    class="primary-btn"
+                    [disabled]="isSavingCriterionGroup() || editCriterionGroupForm.invalid"
+                  >
+                    {{ isSavingCriterionGroup() ? 'Сохраняем...' : 'Сохранить' }}
+                  </button>
+                </div>
+              </form>
+            </ng-template>
+
+            <div class="criteria-list" *ngIf="group.criteria.length; else emptyCriteriaGroup">
+              <article
+                class="criterion-row"
+                *ngFor="let criterion of group.criteria; trackBy: trackByCriterionId"
+              >
+                <div class="criterion-row__main">
+                  <h4>{{ criterion.name }}</h4>
+                  <p *ngIf="criterion.description">{{ criterion.description }}</p>
+                </div>
+
+                <div class="criterion-row__meta">
+                  <span>{{ getCriterionTypeLabel(criterion.type) }}</span>
+                  <span>{{ getCriterionCategoryLabel(criterion.category) }}</span>
+                  <strong>{{ criterion.maxScore }} балл.</strong>
+                </div>
+              </article>
+            </div>
+
+            <ng-template #emptyCriteriaGroup>
+              <div class="empty-card empty-card--inside">В этой группе пока нет критериев.</div>
+            </ng-template>
+          </article>
+        </div>
+      </ng-container>
     </section>
 
     <section class="submission-card" *ngIf="shouldShowSubmissionBlock(currentAssignment)">

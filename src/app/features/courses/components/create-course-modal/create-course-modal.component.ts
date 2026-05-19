@@ -6,7 +6,6 @@ import {
   Output,
   inject,
   signal,
-  computed,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
@@ -38,7 +37,7 @@ export class CreateCourseModalComponent {
     registrationEndsAtUtc: ['', [Validators.required]],
   });
 
-  readonly nameError = computed(() => {
+  nameError(): string {
     const control = this.form.controls.name;
 
     if (!control.touched && !control.dirty) {
@@ -58,9 +57,9 @@ export class CreateCourseModalComponent {
     }
 
     return '';
-  });
+  }
 
-  readonly descriptionError = computed(() => {
+  descriptionError(): string {
     const control = this.form.controls.description;
 
     if (!control.touched && !control.dirty) {
@@ -80,9 +79,9 @@ export class CreateCourseModalComponent {
     }
 
     return '';
-  });
+  }
 
-  readonly registrationStartsAtError = computed(() => {
+  registrationStartsAtError(): string {
     const control = this.form.controls.registrationStartsAtUtc;
 
     if (!control.touched && !control.dirty) {
@@ -94,9 +93,9 @@ export class CreateCourseModalComponent {
     }
 
     return '';
-  });
+  }
 
-  readonly registrationEndsAtError = computed(() => {
+  registrationEndsAtError(): string {
     const control = this.form.controls.registrationEndsAtUtc;
 
     if (!control.touched && !control.dirty) {
@@ -112,7 +111,7 @@ export class CreateCourseModalComponent {
     }
 
     return '';
-  });
+  }
 
   close(): void {
     if (this.isSaving()) {
@@ -137,6 +136,7 @@ export class CreateCourseModalComponent {
 
     if (this.form.invalid || !this.areRegistrationDatesInOrder()) {
       this.form.markAllAsTouched();
+      this.submitError.set('Заполните обязательные поля и проверьте даты регистрации.');
       return;
     }
 
