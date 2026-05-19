@@ -14,6 +14,7 @@ import { forkJoin, timer } from 'rxjs';
 
 import { Assignment, AssignmentSubmission, SubmissionFile } from '../../../../core/models/assigment.model';
 import { AssignmentComment } from '../../../../core/models/assignment-comment.model';
+import { Criterion, CriterionGroupWithCriteria } from '../../../../core/models/grading.model';
 import {
   AssignmentCaptainInfo,
   CaptainTeam,
@@ -64,6 +65,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   draftCaptains = signal<AssignmentTeamMember[]>([]);
   draftCourseStudents = signal<AssignmentTeamStudent[]>([]);
   draftTab = signal<'captains' | 'draft' | 'teams'>('captains');
+  criterionGroups = signal<CriterionGroupWithCriteria[]>([]);
 
   isLoading = signal(true);
   isCommentsLoading = signal(true);
@@ -83,6 +85,10 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   finalSubmissionActionId = signal<string | null>(null);
   isDraftLoading = signal(false);
   draftActionKey = signal<string | null>(null);
+  isCriteriaSettingsLoading = signal(false);
+  isCreatingCriterionGroup = signal(false);
+  isSavingCriterionGroup = signal(false);
+  deletingCriterionGroupId = signal<string | null>(null);
 
   loadError = signal('');
   commentsError = signal('');
@@ -100,11 +106,14 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   captainTeamSuccess = signal('');
   draftError = signal('');
   draftSuccess = signal('');
+  criteriaSettingsError = signal('');
+  criteriaSettingsSuccess = signal('');
   processingMemberKey = signal<string | null>(null);
   selectedTeamStudentIds = signal<string[]>([]);
   teamPickerMode = signal<'captain' | 'members' | null>(null);
   teamModalError = signal('');
   selectedTeamForMembersId = signal<string | null>(null);
+  editingCriterionGroupId = signal<string | null>(null);
 
   readonly commentForm = this.fb.nonNullable.group({
     text: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(1000)]],
@@ -113,6 +122,18 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   readonly createTeamForm = this.fb.nonNullable.group({
     name: [''],
     captainId: ['', [Validators.required]],
+  });
+
+  readonly criterionGroupForm = this.fb.nonNullable.group({
+    name: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]],
+    description: ['', [Validators.maxLength(2000)]],
+    sortOrder: [0, [Validators.required, Validators.min(0)]],
+  });
+
+  readonly editCriterionGroupForm = this.fb.nonNullable.group({
+    name: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]],
+    description: ['', [Validators.maxLength(2000)]],
+    sortOrder: [0, [Validators.required, Validators.min(0)]],
   });
 
   readonly selectedTeamStudents = computed(() => {
@@ -184,6 +205,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     this.unavailableAssignmentNotice.set('');
     this.resetTeamsState();
     this.resetDraftState();
+    this.resetCriteriaSettingsState();
 
     forkJoin({
       assignment: this.assignmentsService.getAssignmentById(assignmentId),
@@ -197,6 +219,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
         this.loadCaptainInfoIfAvailable(assignment);
         this.loadTeamsIfAvailable(assignment);
         this.loadMySubmissionIfAvailable(assignment);
+        this.loadCriteriaSettingsIfAvailable(assignment);
       },
       error: (err) => {
         console.error(err);
@@ -264,6 +287,185 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     this.draftError.set('');
     this.draftSuccess.set('');
     this.draftActionKey.set(null);
+  }
+
+  resetCriteriaSettingsState(): void {
+    this.criterionGroups.set([]);
+    this.criteriaSettingsError.set('');
+    this.criteriaSettingsSuccess.set('');
+    this.editingCriterionGroupId.set(null);
+    this.deletingCriterionGroupId.set(null);
+    this.isCriteriaSettingsLoading.set(false);
+    this.isCreatingCriterionGroup.set(false);
+    this.isSavingCriterionGroup.set(false);
+    this.criterionGroupForm.reset({ name: '', description: '', sortOrder: 0 });
+    this.editCriterionGroupForm.reset({ name: '', description: '', sortOrder: 0 });
+  }
+
+  loadCriteriaSettingsIfAvailable(assignment: Assignment): void {
+    if (!this.canManageCriteriaSettings()) {
+      return;
+    }
+
+    this.loadCriteriaSettings(assignment.id);
+  }
+
+  canManageCriteriaSettings(): boolean {
+    return this.isAdmin() || this.isTeacher();
+  }
+
+  loadCriteriaSettings(assignmentId: string): void {
+    this.isCriteriaSettingsLoading.set(true);
+    this.criteriaSettingsError.set('');
+
+    this.assignmentsService.getCriterionGroups(assignmentId).subscribe({
+      next: (groups) => {
+        if (!groups.length) {
+          this.criterionGroups.set([]);
+          this.isCriteriaSettingsLoading.set(false);
+          return;
+        }
+
+        forkJoin(groups.map((group) => this.assignmentsService.getCriteria(group.id))).subscribe({
+          next: (criteriaByGroup) => {
+            this.criterionGroups.set(
+              groups
+                .map((group, index) => ({
+                  ...group,
+                  criteria: criteriaByGroup[index] ?? [],
+                }))
+                .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)),
+            );
+            this.isCriteriaSettingsLoading.set(false);
+          },
+          error: (err) => {
+            console.error(err);
+            this.criteriaSettingsError.set('Не удалось загрузить критерии задания');
+            this.isCriteriaSettingsLoading.set(false);
+          },
+        });
+      },
+      error: (err) => {
+        console.error(err);
+        this.criteriaSettingsError.set('Не удалось загрузить группы критериев');
+        this.isCriteriaSettingsLoading.set(false);
+      },
+    });
+  }
+
+  createCriterionGroup(): void {
+    const assignment = this.assignment();
+    this.criteriaSettingsError.set('');
+    this.criteriaSettingsSuccess.set('');
+    this.criterionGroupForm.markAllAsTouched();
+
+    if (!assignment || this.criterionGroupForm.invalid || this.isCreatingCriterionGroup()) {
+      return;
+    }
+
+    this.isCreatingCriterionGroup.set(true);
+
+    this.assignmentsService
+      .createCriterionGroup(assignment.id, {
+        name: this.criterionGroupForm.controls.name.getRawValue().trim(),
+        description: this.criterionGroupForm.controls.description.getRawValue().trim() || null,
+        sortOrder: this.criterionGroupForm.controls.sortOrder.getRawValue(),
+      })
+      .subscribe({
+        next: () => {
+          this.criterionGroupForm.reset({
+            name: '',
+            description: '',
+            sortOrder: this.criterionGroups().length + 1,
+          });
+          this.isCreatingCriterionGroup.set(false);
+          this.criteriaSettingsSuccess.set('Группа критериев добавлена');
+          this.loadCriteriaSettings(assignment.id);
+        },
+        error: (err) => {
+          console.error(err);
+          this.isCreatingCriterionGroup.set(false);
+          this.criteriaSettingsError.set(this.getApiErrorMessage(err, 'Не удалось добавить группу критериев'));
+        },
+      });
+  }
+
+  startEditCriterionGroup(group: CriterionGroupWithCriteria): void {
+    this.criteriaSettingsError.set('');
+    this.criteriaSettingsSuccess.set('');
+    this.editingCriterionGroupId.set(group.id);
+    this.editCriterionGroupForm.reset({
+      name: group.name,
+      description: group.description ?? '',
+      sortOrder: group.sortOrder,
+    });
+  }
+
+  cancelEditCriterionGroup(): void {
+    if (this.isSavingCriterionGroup()) {
+      return;
+    }
+
+    this.editingCriterionGroupId.set(null);
+    this.editCriterionGroupForm.reset({ name: '', description: '', sortOrder: 0 });
+  }
+
+  saveCriterionGroup(group: CriterionGroupWithCriteria): void {
+    const assignment = this.assignment();
+    this.criteriaSettingsError.set('');
+    this.criteriaSettingsSuccess.set('');
+    this.editCriterionGroupForm.markAllAsTouched();
+
+    if (!assignment || this.editCriterionGroupForm.invalid || this.isSavingCriterionGroup()) {
+      return;
+    }
+
+    this.isSavingCriterionGroup.set(true);
+
+    this.assignmentsService
+      .updateCriterionGroup(group.id, {
+        name: this.editCriterionGroupForm.controls.name.getRawValue().trim(),
+        description: this.editCriterionGroupForm.controls.description.getRawValue().trim() || null,
+        sortOrder: this.editCriterionGroupForm.controls.sortOrder.getRawValue(),
+      })
+      .subscribe({
+        next: () => {
+          this.isSavingCriterionGroup.set(false);
+          this.editingCriterionGroupId.set(null);
+          this.criteriaSettingsSuccess.set('Группа критериев обновлена');
+          this.loadCriteriaSettings(assignment.id);
+        },
+        error: (err) => {
+          console.error(err);
+          this.isSavingCriterionGroup.set(false);
+          this.criteriaSettingsError.set(this.getApiErrorMessage(err, 'Не удалось обновить группу критериев'));
+        },
+      });
+  }
+
+  deleteCriterionGroup(group: CriterionGroupWithCriteria): void {
+    const assignment = this.assignment();
+
+    if (!assignment || this.deletingCriterionGroupId()) {
+      return;
+    }
+
+    this.criteriaSettingsError.set('');
+    this.criteriaSettingsSuccess.set('');
+    this.deletingCriterionGroupId.set(group.id);
+
+    this.assignmentsService.deleteCriterionGroup(group.id).subscribe({
+      next: () => {
+        this.deletingCriterionGroupId.set(null);
+        this.criteriaSettingsSuccess.set('Группа критериев удалена');
+        this.loadCriteriaSettings(assignment.id);
+      },
+      error: (err) => {
+        console.error(err);
+        this.deletingCriterionGroupId.set(null);
+        this.criteriaSettingsError.set(this.getApiErrorMessage(err, 'Не удалось удалить группу критериев'));
+      },
+    });
   }
 
   loadTeamsIfAvailable(assignment: Assignment): void {
@@ -1250,6 +1452,18 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     );
   }
 
+  getUnavailableAssignmentText(assignment: Assignment): string {
+    if (this.shouldShowCaptainControls(assignment)) {
+      return 'Сейчас идет выбор капитанов. Можно назначить себя капитаном команды, а само задание откроется позже.';
+    }
+
+    if (this.isStudent()) {
+      return 'Задание пока недоступно. Когда этап откроется, здесь появятся доступные действия.';
+    }
+
+    return 'Задание пока недоступно студентам. Преподаватель может управлять командами и настройками задания.';
+  }
+
   getCaptainPanelStatus(): string {
     return this.isCurrentUserCaptain()
       ? 'Вы капитан команды'
@@ -1615,6 +1829,60 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     return 'Отправлено';
   }
 
+  getCriteriaTotalCount(): number {
+    return this.criterionGroups().reduce((total, group) => total + group.criteria.length, 0);
+  }
+
+  getCriterionTypeLabel(type: Criterion['type']): string {
+    switch (type) {
+      case 'score':
+        return 'Диапазон';
+      case 'pass_fail':
+        return 'Чекбокс';
+      case 'option':
+        return 'Выбор варианта';
+      case 'multiplier':
+        return 'Множитель';
+      default:
+        return String(type);
+    }
+  }
+
+  getCriterionCategoryLabel(category: Criterion['category']): string {
+    switch (category) {
+      case 'main':
+        return 'Основной';
+      case 'bonus':
+        return 'Бонус';
+      case 'penalty':
+        return 'Штраф';
+      case 'multiplier':
+        return 'Множитель';
+      default:
+        return String(category);
+    }
+  }
+
+  getCriterionGroupNameError(): string {
+    const control = this.criterionGroupForm.controls.name;
+
+    if (!control.touched || !control.errors) return '';
+    if (control.errors['required']) return 'Введите название группы';
+    if (control.errors['minlength']) return 'Название должно быть не короче 2 символов';
+    if (control.errors['maxlength']) return 'Название должно быть не длиннее 200 символов';
+    return '';
+  }
+
+  getEditCriterionGroupNameError(): string {
+    const control = this.editCriterionGroupForm.controls.name;
+
+    if (!control.touched || !control.errors) return '';
+    if (control.errors['required']) return 'Введите название группы';
+    if (control.errors['minlength']) return 'Название должно быть не короче 2 символов';
+    if (control.errors['maxlength']) return 'Название должно быть не длиннее 200 символов';
+    return '';
+  }
+
   private getApiErrorMessage(err: unknown, fallback: string): string {
     if (err instanceof HttpErrorResponse) {
       const errorBody = err.error as { title?: string; detail?: string; message?: string } | string | null;
@@ -1645,6 +1913,14 @@ export class CourseAssignmentDetailsComponent implements OnInit {
 
   trackByTeamId(_: number, team: AssignmentTeam): string {
     return team.id;
+  }
+
+  trackByCriterionGroupId(_: number, group: CriterionGroupWithCriteria): string {
+    return group.id;
+  }
+
+  trackByCriterionId(_: number, criterion: Criterion): string {
+    return criterion.id;
   }
 
   trackByMemberId(_: number, member: AssignmentTeamMember): string {

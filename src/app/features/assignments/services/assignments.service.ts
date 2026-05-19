@@ -4,6 +4,12 @@ import { Observable } from 'rxjs';
 
 import { Assignment, AssignmentSubmission } from '../../../core/models/assigment.model';
 import { AssignmentComment } from '../../../core/models/assignment-comment.model';
+import {
+  CreateCriterionGroupRequest,
+  Criterion,
+  CriterionGroup,
+  UpdateCriterionGroupRequest,
+} from '../../../core/models/grading.model';
 
 export interface CreateAssignmentRequest {
   courseId: string;
@@ -101,7 +107,7 @@ export interface SubmissionGrade {
 })
 export class AssignmentsService {
   private readonly http = inject(HttpClient);
-  private readonly rootUrl = 'http://111.88.155.34:5196';
+ private readonly rootUrl = 'http://111.88.155.34:5196';
   private readonly baseUrl = 'http://111.88.155.34:5196/api/assignments';
   private readonly submissionsUrl = 'http://111.88.155.34:5196/api/submissions';
 
@@ -111,6 +117,37 @@ export class AssignmentsService {
 
   getAssignmentComments(assignmentId: string): Observable<AssignmentComment[]> {
     return this.http.get<AssignmentComment[]>(`${this.baseUrl}/${assignmentId}/comments`);
+  }
+
+  getCriterionGroups(assignmentId: string): Observable<CriterionGroup[]> {
+    return this.http.get<CriterionGroup[]>(`${this.baseUrl}/${assignmentId}/criterion-groups`);
+  }
+
+  createCriterionGroup(
+    assignmentId: string,
+    payload: CreateCriterionGroupRequest,
+  ): Observable<CriterionGroup> {
+    return this.http.post<CriterionGroup>(`${this.baseUrl}/${assignmentId}/criterion-groups`, payload);
+  }
+
+  updateCriterionGroup(
+    criterionGroupId: string,
+    payload: UpdateCriterionGroupRequest,
+  ): Observable<CriterionGroup> {
+    return this.http.put<CriterionGroup>(
+      `${this.baseUrl}/criterion-groups/${criterionGroupId}`,
+      payload,
+    );
+  }
+
+  deleteCriterionGroup(criterionGroupId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/criterion-groups/${criterionGroupId}`);
+  }
+
+  getCriteria(criterionGroupId: string): Observable<Criterion[]> {
+    return this.http.get<Criterion[]>(
+      `${this.rootUrl}/api/criterion-groups/${criterionGroupId}/criteria`,
+    );
   }
 
   getMyCaptainInfo(assignmentId: string): Observable<AssignmentCaptainInfo> {
