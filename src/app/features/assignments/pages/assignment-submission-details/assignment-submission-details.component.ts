@@ -11,6 +11,17 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { AssignmentsService } from '../../../assignments/services/assignments.service';
 import { AssignmentSubmission } from '../../../../core/models/assigment.model';
+import {
+  ChoiceCriterionSettings,
+  Criterion,
+  CriterionOption,
+  CriterionType,
+  GradePenaltyInput,
+  SaveSubmissionAssessmentRequest,
+  ScoreCriterionSettings,
+  SubmissionAssessment,
+  SubmissionAssessmentForm,
+} from '../../../../core/models/grading.model';
 
 @Component({
   selector: 'app-assignment-submission-details',
@@ -33,12 +44,27 @@ export class AssignmentSubmissionDetailsComponent implements OnInit {
   isLoading = signal(false);
   isSavingGrade = signal(false);
   isDeletingGrade = signal(false);
+  isAssessmentFormLoading = signal(false);
+  isSavingAssessment = signal(false);
   loadError = signal('');
   gradeError = signal('');
   gradeSuccess = signal('');
+  assessmentError = signal('');
+  assessmentSuccess = signal('');
+  assessmentForm = signal<SubmissionAssessmentForm | null>(null);
+  savedAssessment = signal<SubmissionAssessment | null>(null);
+  criterionValues = signal<Record<string, unknown>>({});
+  assessmentPenalties = signal<GradePenaltyInput>({
+    deadline: false,
+    progress: false,
+    requiredCriteria: false,
+  });
 
   readonly gradeForm = this.fb.nonNullable.group({
     value: [0, [Validators.required, Validators.min(0), Validators.max(100)]],
+    comment: ['', [Validators.maxLength(1000)]],
+  });
+  readonly assessmentCommentForm = this.fb.nonNullable.group({
     comment: ['', [Validators.maxLength(1000)]],
   });
   readonly grades = [0, 1, 2, 3, 4, 5];
@@ -95,6 +121,47 @@ export class AssignmentSubmissionDetailsComponent implements OnInit {
       value: submission.grade ?? 0,
       comment: submission.teacherComment ?? '',
     });
+    this.loadAssessmentForm(submission.id);
+  }
+
+  loadAssessmentForm(submissionId: string): void {
+    this.isAssessmentFormLoading.set(true);
+    this.assessmentError.set('');
+    this.assessmentSuccess.set('');
+
+    this.assignmentsService.getSubmissionAssessmentForm(submissionId).subscribe({
+      next: (form) => {
+        this.assessmentForm.set(form);
+        this.savedAssessment.set(form.savedAssessment ?? null);
+        this.initializeAssessmentState(form);
+        this.isAssessmentFormLoading.set(false);
+      },
+      error: (err) => {
+        console.error(err);
+        this.assessmentError.set('Не удалось загрузить форму проверки по критериям');
+        this.isAssessmentFormLoading.set(false);
+      },
+    });
+  }
+
+  initializeAssessmentState(form: SubmissionAssessmentForm): void {
+    const values: Record<string, unknown> = {};
+
+    form.groups.forEach((group) => {
+      group.criteria.forEach((criterion) => {
+        values[criterion.id] = this.getDefaultCriterionValue(criterion);
+      });
+    });
+
+    this.extractSavedCriterionValues(form.savedAssessment).forEach((value) => {
+      values[value.criterionId] = value.value;
+    });
+
+    this.criterionValues.set(values);
+    this.assessmentPenalties.set(this.extractSavedPenalties(form.savedAssessment));
+    this.assessmentCommentForm.patchValue({
+      comment: form.savedAssessment?.comment ?? this.submission()?.teacherComment ?? '',
+    });
   }
 
   back(): void {
@@ -111,6 +178,11 @@ export class AssignmentSubmissionDetailsComponent implements OnInit {
 
   canGradeSubmission(): boolean {
     return true;
+  }
+
+  hasAssessmentCriteria(): boolean {
+    const form = this.assessmentForm();
+    return Boolean(form?.groups.some((group) => group.criteria.length > 0));
   }
 
   getStudentFullName(): string {
@@ -178,6 +250,54 @@ export class AssignmentSubmissionDetailsComponent implements OnInit {
       });
   }
 
+  saveAssessment(): void {
+    const submission = this.submission();
+    const form = this.assessmentForm();
+
+    this.assessmentError.set('');
+    this.assessmentSuccess.set('');
+    this.assessmentCommentForm.markAllAsTouched();
+
+    if (!submission || !form || this.assessmentCommentForm.invalid) {
+      return;
+    }
+
+    const values = form.groups.flatMap((group) =>
+      group.criteria.map((criterion) => ({
+        criterionId: criterion.id,
+        value: this.criterionValues()[criterion.id] ?? this.getDefaultCriterionValue(criterion),
+      })),
+    );
+    const payload: SaveSubmissionAssessmentRequest = {
+      values,
+      penalties: this.assessmentPenalties(),
+      comment: this.assessmentCommentForm.controls.comment.getRawValue().trim() || null,
+    };
+
+    this.isSavingAssessment.set(true);
+
+    this.assignmentsService.saveSubmissionAssessment(submission.id, payload).subscribe({
+      next: (assessment) => {
+        this.savedAssessment.set(assessment);
+        this.submission.set({
+          ...submission,
+          grade: assessment.finalGrade,
+          teacherComment: assessment.comment ?? null,
+          gradedByTeacherId: assessment.checkedByUserId,
+          gradedAtUtc: assessment.checkedAtUtc,
+          status: submission.status === 'Submitted' || submission.status === 1 ? 'Reviewed' : submission.status,
+        });
+        this.isSavingAssessment.set(false);
+        this.assessmentSuccess.set('Проверка сохранена');
+      },
+      error: (err) => {
+        console.error(err);
+        this.isSavingAssessment.set(false);
+        this.assessmentError.set('Не удалось сохранить проверку');
+      },
+    });
+  }
+
   selectGrade(grade: number): void {
     this.gradeForm.controls.value.setValue(grade);
     this.gradeForm.controls.value.markAsTouched();
@@ -232,6 +352,18 @@ export class AssignmentSubmissionDetailsComponent implements OnInit {
     return grade;
   }
 
+  trackByAssessmentGroupId(_: number, group: SubmissionAssessmentForm['groups'][number]): string {
+    return group.id;
+  }
+
+  trackByCriterionId(_: number, criterion: Criterion): string {
+    return criterion.id;
+  }
+
+  trackByCriterionOptionValue(_: number, option: CriterionOption): string {
+    return option.value;
+  }
+
   getGradeError(): string {
     const control = this.gradeForm.controls.value;
 
@@ -240,6 +372,180 @@ export class AssignmentSubmissionDetailsComponent implements OnInit {
     if (control.errors['min']) return 'Оценка не может быть меньше 0';
     if (control.errors['max']) return 'Оценка не может быть больше 100';
     return '';
+  }
+
+  getAssessmentCommentError(): string {
+    const control = this.assessmentCommentForm.controls.comment;
+
+    if (!control.touched || !control.errors) return '';
+    if (control.errors['maxlength']) return 'Комментарий не должен быть длиннее 1000 символов';
+    return '';
+  }
+
+  getCriterionTypeLabel(type: Criterion['type']): string {
+    switch (type) {
+      case 'score':
+        return 'Диапазон';
+      case 'pass_fail':
+        return 'Чекбокс';
+      case 'option':
+        return 'Выбор';
+      case 'multiplier':
+        return 'Множитель';
+      default:
+        return String(type);
+    }
+  }
+
+  getCriterionCategoryLabel(category: Criterion['category']): string {
+    switch (category) {
+      case 'main':
+        return 'Основной';
+      case 'bonus':
+        return 'Бонус';
+      case 'penalty':
+        return 'Штраф';
+      case 'multiplier':
+        return 'Множитель';
+      default:
+        return String(category);
+    }
+  }
+
+  getCriterionValue(criterionId: string): unknown {
+    return this.criterionValues()[criterionId];
+  }
+
+  getNumberCriterionValue(criterionId: string): number {
+    const value = this.getCriterionValue(criterionId);
+    return typeof value === 'number' ? value : Number(value) || 0;
+  }
+
+  getStringCriterionValue(criterionId: string): string {
+    const value = this.getCriterionValue(criterionId);
+    return typeof value === 'string' ? value : '';
+  }
+
+  getBooleanCriterionValue(criterionId: string): boolean {
+    return this.getCriterionValue(criterionId) === true;
+  }
+
+  setNumberCriterionValue(criterionId: string, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const value = input.value === '' ? 0 : Number(input.value);
+    this.setCriterionValue(criterionId, Number.isFinite(value) ? value : 0);
+  }
+
+  setStringCriterionValue(criterionId: string, event: Event): void {
+    const input = event.target as HTMLSelectElement;
+    this.setCriterionValue(criterionId, input.value);
+  }
+
+  setBooleanCriterionValue(criterionId: string, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.setCriterionValue(criterionId, input.checked);
+  }
+
+  setPenaltyValue(key: keyof GradePenaltyInput, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.assessmentPenalties.update((penalties) => ({
+      ...penalties,
+      [key]: input.checked,
+    }));
+  }
+
+  getScoreMin(criterion: Criterion): number {
+    return this.asScoreSettings(criterion.settings).minValue ?? 0;
+  }
+
+  getScoreMax(criterion: Criterion): number {
+    return this.asScoreSettings(criterion.settings).maxValue ?? criterion.maxScore ?? 100;
+  }
+
+  getCriterionOptions(criterion: Criterion): CriterionOption[] {
+    return this.asChoiceSettings(criterion.settings).options ?? [];
+  }
+
+  getAssessmentFinalGrade(): number | null {
+    return this.savedAssessment()?.finalGrade ?? this.submission()?.grade ?? null;
+  }
+
+  private setCriterionValue(criterionId: string, value: unknown): void {
+    this.criterionValues.update((values) => ({
+      ...values,
+      [criterionId]: value,
+    }));
+    this.assessmentError.set('');
+    this.assessmentSuccess.set('');
+  }
+
+  private getDefaultCriterionValue(criterion: Criterion): unknown {
+    switch (criterion.type as CriterionType) {
+      case 'score':
+        return this.getScoreMin(criterion);
+      case 'pass_fail':
+      case 'option':
+        return this.getCriterionOptions(criterion)[0]?.value ?? '';
+      case 'multiplier':
+        return false;
+      default:
+        return null;
+    }
+  }
+
+  private extractSavedCriterionValues(
+    assessment: SubmissionAssessment | null | undefined,
+  ): Array<{ criterionId: string; value: unknown }> {
+    if (!assessment || !Array.isArray(assessment.criterionValues)) {
+      return [];
+    }
+
+    return assessment.criterionValues.filter(
+      (value): value is { criterionId: string; value: unknown } =>
+        Boolean(value) &&
+        typeof value === 'object' &&
+        'criterionId' in value &&
+        typeof value.criterionId === 'string',
+    );
+  }
+
+  private extractSavedPenalties(
+    assessment: SubmissionAssessment | null | undefined,
+  ): GradePenaltyInput {
+    const penalties: GradePenaltyInput = {
+      deadline: false,
+      progress: false,
+      requiredCriteria: false,
+    };
+
+    const appliedPenalties = assessment?.calculationDetails?.appliedPenalties;
+    if (!Array.isArray(appliedPenalties)) {
+      return penalties;
+    }
+
+    appliedPenalties.forEach((penalty) => {
+      if (penalty.source === 'deadline') penalties.deadline = true;
+      if (penalty.source === 'progress') penalties.progress = true;
+      if (penalty.source === 'required_criteria') penalties.requiredCriteria = true;
+    });
+
+    return penalties;
+  }
+
+  private asScoreSettings(settings: unknown): Partial<ScoreCriterionSettings> {
+    if (!settings || typeof settings !== 'object') {
+      return {};
+    }
+
+    return settings as Partial<ScoreCriterionSettings>;
+  }
+
+  private asChoiceSettings(settings: unknown): Partial<ChoiceCriterionSettings> {
+    if (!settings || typeof settings !== 'object') {
+      return {};
+    }
+
+    return settings as Partial<ChoiceCriterionSettings>;
   }
 }
 

@@ -10,6 +10,9 @@ import {
   CreateCriterionGroupRequest,
   Criterion,
   CriterionGroup,
+  SaveSubmissionAssessmentRequest,
+  SubmissionAssessment,
+  SubmissionAssessmentForm,
   UpdateCriterionRequest,
   UpdateCriterionGroupRequest,
 } from '../../../core/models/grading.model';
@@ -317,6 +320,26 @@ export class AssignmentsService {
 
   getAssignmentSubmissionById(assignmentId: string, submissionId: string) {
     return this.http.get<AssignmentSubmission>(`${this.submissionsUrl}/${submissionId}`);
+  }
+
+  getSubmissionAssessmentForm(submissionId: string): Observable<SubmissionAssessmentForm> {
+    return this.http.get<SubmissionAssessmentForm>(
+      `${this.submissionsUrl}/${submissionId}/assessment-form`,
+    );
+  }
+
+  getSubmissionAssessment(submissionId: string): Observable<SubmissionAssessment> {
+    return this.http.get<SubmissionAssessment>(`${this.submissionsUrl}/${submissionId}/assessment`);
+  }
+
+  saveSubmissionAssessment(
+    submissionId: string,
+    payload: SaveSubmissionAssessmentRequest,
+  ): Observable<SubmissionAssessment> {
+    return this.http.put<SubmissionAssessment>(
+      `${this.submissionsUrl}/${submissionId}/assessment`,
+      payload,
+    );
   }
 
   updateSubmissionGrade(submissionId: string, payload: { value: number; comment?: string | null }) {
