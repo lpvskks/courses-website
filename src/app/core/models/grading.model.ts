@@ -2,6 +2,10 @@ export type CriterionType = 'score' | 'pass_fail' | 'option' | 'multiplier';
 
 export type CriterionCategory = 'main' | 'bonus' | 'penalty' | 'multiplier';
 
+export type AssignmentGradingMode = 'sum_points' | 'base_with_multipliers';
+
+export type MainCriteriaThresholdBehavior = 'set_to_zero' | 'mark_as_failed';
+
 export interface CriterionOption {
   value: string;
   label?: string | null;
@@ -97,4 +101,28 @@ export interface UpdateCriterionRequest {
   settings?: CriterionSettings | null;
   maxScore?: number | null;
   sortOrder?: number | null;
+}
+
+export interface MainCriteriaThresholdSettings {
+  enabled: boolean;
+  threshold?: number | null;
+  behavior?: MainCriteriaThresholdBehavior | null;
+}
+
+export interface PenaltyRule {
+  enabled: boolean;
+  percentage?: number | null;
+}
+
+export interface AssignmentPenaltySettings {
+  deadline: PenaltyRule;
+  progress: PenaltyRule;
+  requiredCriteria: PenaltyRule;
+}
+
+export interface AssignmentGradingRules {
+  mode: AssignmentGradingMode;
+  baseGrade?: number | null;
+  mainCriteriaThreshold: MainCriteriaThresholdSettings;
+  penalties: AssignmentPenaltySettings;
 }

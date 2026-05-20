@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import { Assignment, AssignmentSubmission } from '../../../core/models/assigment.model';
 import { AssignmentComment } from '../../../core/models/assignment-comment.model';
 import {
+  AssignmentGradingRules,
   CreateCriterionRequest,
   CreateCriterionGroupRequest,
   Criterion,
@@ -109,7 +110,7 @@ export interface SubmissionGrade {
 })
 export class AssignmentsService {
   private readonly http = inject(HttpClient);
-private readonly rootUrl = 'http://111.88.155.34:5196';
+  private readonly rootUrl = 'http://111.88.155.34:5196';
   private readonly baseUrl = 'http://111.88.155.34:5196/api/assignments';
   private readonly submissionsUrl = 'http://111.88.155.34:5196/api/submissions';
 
@@ -119,6 +120,20 @@ private readonly rootUrl = 'http://111.88.155.34:5196';
 
   getAssignmentComments(assignmentId: string): Observable<AssignmentComment[]> {
     return this.http.get<AssignmentComment[]>(`${this.baseUrl}/${assignmentId}/comments`);
+  }
+
+  getGradingRules(assignmentId: string): Observable<AssignmentGradingRules> {
+    return this.http.get<AssignmentGradingRules>(`${this.baseUrl}/${assignmentId}/grading-rules`);
+  }
+
+  updateGradingRules(
+    assignmentId: string,
+    payload: AssignmentGradingRules,
+  ): Observable<AssignmentGradingRules> {
+    return this.http.put<AssignmentGradingRules>(
+      `${this.baseUrl}/${assignmentId}/grading-rules`,
+      payload,
+    );
   }
 
   getCriterionGroups(assignmentId: string): Observable<CriterionGroup[]> {
@@ -306,7 +321,7 @@ private readonly rootUrl = 'http://111.88.155.34:5196';
 
   updateSubmissionGrade(submissionId: string, payload: { value: number; comment?: string | null }) {
     return this.http.put<SubmissionGrade>(
-      `http://localhost:5196/api/submissions/${submissionId}/grade`,
+      `http://111.88.155.34:5196/api/submissions/${submissionId}/grade`,
       payload,
     );
   }

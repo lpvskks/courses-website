@@ -333,6 +333,165 @@
       </div>
     </section>
 
+    <section class="grading-rules-card" *ngIf="canManageCriteriaSettings()">
+      <div class="section-header criteria-settings-card__header">
+        <div>
+          <h2 class="section-title">Правила расчета оценки</h2>
+          <p class="section-subtitle">
+            Настройте, как система превращает баллы, штрафы и множители в итоговую оценку.
+          </p>
+        </div>
+      </div>
+
+      <div *ngIf="gradingRulesError()" class="banner banner--error">
+        {{ gradingRulesError() }}
+      </div>
+
+      <div *ngIf="gradingRulesSuccess()" class="banner banner--success">
+        {{ gradingRulesSuccess() }}
+      </div>
+
+      <div class="loading-card" *ngIf="isGradingRulesLoading()">
+        Загружаем правила расчета...
+      </div>
+
+      <form
+        class="grading-rules-form"
+        *ngIf="!isGradingRulesLoading()"
+        [formGroup]="gradingRulesForm"
+        (ngSubmit)="saveGradingRules()"
+      >
+        <section class="grading-rules-section">
+          <div class="grading-rules-section__head">
+            <h3>Способ расчета</h3>
+          </div>
+
+          <div class="grading-mode-grid">
+            <label class="grading-mode-card">
+              <input type="radio" formControlName="mode" value="sum_points" />
+              <span>
+                <strong>Сумма баллов</strong>
+                <small>Основные баллы + бонусы - штрафы, затем применяются множители.</small>
+              </span>
+            </label>
+
+            <label class="grading-mode-card">
+              <input type="radio" formControlName="mode" value="base_with_multipliers" />
+              <span>
+                <strong>Базовая оценка и множители</strong>
+                <small>Итог считается от заданной базовой оценки с учетом множителей.</small>
+              </span>
+            </label>
+          </div>
+
+          <div
+            class="criteria-field grading-rules-field"
+            *ngIf="gradingRulesForm.controls.mode.getRawValue() === 'base_with_multipliers'"
+          >
+            <label for="grading-base-grade">Базовая оценка</label>
+            <input
+              id="grading-base-grade"
+              type="number"
+              min="1"
+              formControlName="baseGrade"
+            />
+          </div>
+        </section>
+
+        <section class="grading-rules-section">
+          <div class="grading-rules-section__head">
+            <h3>Порог по основным критериям</h3>
+          </div>
+
+          <label class="grading-toggle-row">
+            <input type="checkbox" formControlName="thresholdEnabled" />
+            <span>
+              <strong>Использовать минимальный порог</strong>
+              <small>Бонусы не заменят обязательные основные баллы.</small>
+            </span>
+          </label>
+
+          <div class="grading-rules-grid" *ngIf="gradingRulesForm.controls.thresholdEnabled.getRawValue()">
+            <div class="criteria-field">
+              <label for="grading-threshold">Порог, %</label>
+              <input id="grading-threshold" type="number" min="0" max="100" formControlName="threshold" />
+            </div>
+
+            <div class="criteria-field">
+              <label for="grading-threshold-behavior">Если порог не пройден</label>
+              <select id="grading-threshold-behavior" formControlName="thresholdBehavior">
+                <option value="set_to_zero">Обнулить оценку</option>
+                <option value="mark_as_failed">Пометить как не сдано</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section class="grading-rules-section">
+          <div class="grading-rules-section__head">
+            <h3>Штрафы</h3>
+          </div>
+
+          <div class="grading-penalties-grid">
+            <article class="grading-penalty-card">
+              <label class="grading-toggle-row">
+                <input type="checkbox" formControlName="deadlinePenaltyEnabled" />
+                <span>
+                  <strong>Пропущен дедлайн</strong>
+                  <small>Снижает итоговую оценку на заданный процент.</small>
+                </span>
+              </label>
+
+              <div class="criteria-field" *ngIf="gradingRulesForm.controls.deadlinePenaltyEnabled.getRawValue()">
+                <label for="deadline-penalty">Штраф, %</label>
+                <input id="deadline-penalty" type="number" min="0" max="100" formControlName="deadlinePenaltyPercentage" />
+              </div>
+            </article>
+
+            <article class="grading-penalty-card">
+              <label class="grading-toggle-row">
+                <input type="checkbox" formControlName="progressPenaltyEnabled" />
+                <span>
+                  <strong>Пропущен прогресс</strong>
+                  <small>Применяется при проверке, если прогресс не был показан.</small>
+                </span>
+              </label>
+
+              <div class="criteria-field" *ngIf="gradingRulesForm.controls.progressPenaltyEnabled.getRawValue()">
+                <label for="progress-penalty">Штраф, %</label>
+                <input id="progress-penalty" type="number" min="0" max="100" formControlName="progressPenaltyPercentage" />
+              </div>
+            </article>
+
+            <article class="grading-penalty-card">
+              <label class="grading-toggle-row">
+                <input type="checkbox" formControlName="requiredCriteriaPenaltyEnabled" />
+                <span>
+                  <strong>Не выполнены обязательные требования</strong>
+                  <small>Применяется при проверке, если есть критичные нарушения.</small>
+                </span>
+              </label>
+
+              <div class="criteria-field" *ngIf="gradingRulesForm.controls.requiredCriteriaPenaltyEnabled.getRawValue()">
+                <label for="required-criteria-penalty">Штраф, %</label>
+                <input id="required-criteria-penalty" type="number" min="0" max="100" formControlName="requiredCriteriaPenaltyPercentage" />
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <div class="grading-rules-form__actions">
+          <button
+            type="submit"
+            class="primary-btn"
+            [disabled]="isSavingGradingRules() || gradingRulesForm.invalid"
+          >
+            {{ isSavingGradingRules() ? 'Сохраняем...' : 'Сохранить правила' }}
+          </button>
+        </div>
+      </form>
+    </section>
+
     <section class="criteria-settings-card" *ngIf="canManageCriteriaSettings()">
       <div class="section-header criteria-settings-card__header">
         <div>

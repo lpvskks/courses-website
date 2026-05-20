@@ -413,6 +413,7 @@
   word-break: break-word;
 }
 
+.grading-rules-card,
 .criteria-settings-card,
 .comments-card,
 .submission-card {
@@ -424,6 +425,104 @@
   box-shadow:
     0 14px 40px rgba(0, 92, 187, 0.08),
     0 4px 16px rgba(15, 23, 42, 0.04);
+}
+
+.grading-rules-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.grading-rules-section {
+  padding: 18px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border: 1px solid #dbeafe;
+}
+
+.grading-rules-section__head {
+  margin-bottom: 14px;
+}
+
+.grading-rules-section__head h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.grading-mode-grid,
+.grading-penalties-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.grading-penalties-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.grading-mode-card,
+.grading-toggle-row,
+.grading-penalty-card {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.grading-mode-card,
+.grading-penalty-card {
+  padding: 14px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+.grading-mode-card input,
+.grading-toggle-row input {
+  margin-top: 3px;
+}
+
+.grading-mode-card span,
+.grading-toggle-row span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.grading-mode-card strong,
+.grading-toggle-row strong {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.grading-mode-card small,
+.grading-toggle-row small {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.grading-rules-field {
+  max-width: 260px;
+  margin-top: 14px;
+}
+
+.grading-rules-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 260px));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.grading-penalty-card {
+  flex-direction: column;
+}
+
+.grading-rules-form__actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .criteria-settings-card__header {
@@ -804,6 +903,9 @@
 
   .criteria-group-form,
   .criteria-group-edit,
+  .grading-mode-grid,
+  .grading-penalties-grid,
+  .grading-rules-grid,
   .criterion-form__grid,
   .criterion-form__grid--small,
   .criterion-option-row,
@@ -817,6 +919,7 @@
 
   .criterion-form__head,
   .criterion-settings__head,
+  .grading-rules-form__actions,
   .criterion-form__actions {
     align-items: flex-start;
     flex-direction: column;
@@ -844,6 +947,7 @@
     font-size: 28px;
   }
 
+  .grading-rules-card,
   .criteria-settings-card,
   .comments-card {
     padding: 20px;
