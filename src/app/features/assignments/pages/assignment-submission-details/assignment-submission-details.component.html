@@ -40,7 +40,175 @@
       </div>
     </section>
 
-    <section *ngIf="canGradeSubmission()" class="submission-grade-card" [formGroup]="gradeForm">
+    <div class="empty-card" *ngIf="canGradeSubmission() && isAssessmentFormLoading()">
+      Загружаем критерии проверки...
+    </div>
+
+    <div *ngIf="assessmentError() && !hasAssessmentCriteria()" class="banner banner--error">
+      {{ assessmentError() }}
+    </div>
+
+    <section *ngIf="canGradeSubmission() && hasAssessmentCriteria()" class="submission-grade-card assessment-card">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Проверка по критериям</h2>
+          <p class="section-subtitle">Заполните критерии, примените нужные штрафы и сохраните проверку.</p>
+        </div>
+
+        <div class="assessment-total" *ngIf="getAssessmentFinalGrade() !== null">
+          <span>Итог</span>
+          <strong>{{ getAssessmentFinalGrade() }}</strong>
+        </div>
+      </div>
+
+      <ng-container *ngIf="assessmentForm() as form">
+        <div class="assessment-groups">
+          <article
+            class="assessment-group"
+            *ngFor="let group of form.groups; trackBy: trackByAssessmentGroupId"
+          >
+            <div class="assessment-group__header">
+              <div>
+                <h3>{{ group.name }}</h3>
+                <p *ngIf="group.description">{{ group.description }}</p>
+              </div>
+            </div>
+
+            <div class="criteria-list">
+              <div
+                class="criterion-row"
+                *ngFor="let criterion of group.criteria; trackBy: trackByCriterionId"
+              >
+                <div class="criterion-row__info">
+                  <div class="criterion-row__badges">
+                    <span>{{ getCriterionCategoryLabel(criterion.category) }}</span>
+                    <span>{{ getCriterionTypeLabel(criterion.type) }}</span>
+                  </div>
+                  <h4>{{ criterion.name }}</h4>
+                  <p *ngIf="criterion.description">{{ criterion.description }}</p>
+                </div>
+
+                <div class="criterion-control" [ngSwitch]="criterion.type">
+                  <label class="grade-field" *ngSwitchCase="'score'">
+                    <span>Баллы</span>
+                    <input
+                      type="number"
+                      [min]="getScoreMin(criterion)"
+                      [max]="getScoreMax(criterion)"
+                      [value]="getNumberCriterionValue(criterion.id)"
+                      (input)="setNumberCriterionValue(criterion.id, $event)"
+                    />
+                  </label>
+
+                  <label class="grade-field" *ngSwitchCase="'pass_fail'">
+                    <span>Значение</span>
+                    <select
+                      [value]="getStringCriterionValue(criterion.id)"
+                      (change)="setStringCriterionValue(criterion.id, $event)"
+                    >
+                      <option
+                        *ngFor="let option of getCriterionOptions(criterion); trackBy: trackByCriterionOptionValue"
+                        [value]="option.value"
+                      >
+                        {{ option.label || option.value }}
+                      </option>
+                    </select>
+                  </label>
+
+                  <label class="grade-field" *ngSwitchCase="'option'">
+                    <span>Вариант</span>
+                    <select
+                      [value]="getStringCriterionValue(criterion.id)"
+                      (change)="setStringCriterionValue(criterion.id, $event)"
+                    >
+                      <option
+                        *ngFor="let option of getCriterionOptions(criterion); trackBy: trackByCriterionOptionValue"
+                        [value]="option.value"
+                      >
+                        {{ option.label || option.value }}
+                      </option>
+                    </select>
+                  </label>
+
+                  <label class="criterion-toggle" *ngSwitchCase="'multiplier'">
+                    <input
+                      type="checkbox"
+                      [checked]="getBooleanCriterionValue(criterion.id)"
+                      (change)="setBooleanCriterionValue(criterion.id, $event)"
+                    />
+                    <span>Применить</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="assessment-penalties">
+          <h3>Штрафы</h3>
+          <label class="criterion-toggle">
+            <input
+              type="checkbox"
+              [checked]="assessmentPenalties().deadline"
+              (change)="setPenaltyValue('deadline', $event)"
+            />
+            <span>Пропущен дедлайн</span>
+          </label>
+          <label class="criterion-toggle">
+            <input
+              type="checkbox"
+              [checked]="assessmentPenalties().progress"
+              (change)="setPenaltyValue('progress', $event)"
+            />
+            <span>Пропущен прогресс</span>
+          </label>
+          <label class="criterion-toggle">
+            <input
+              type="checkbox"
+              [checked]="assessmentPenalties().requiredCriteria"
+              (change)="setPenaltyValue('requiredCriteria', $event)"
+            />
+            <span>Не выполнены обязательные требования</span>
+          </label>
+        </div>
+
+        <div class="grade-form" [formGroup]="assessmentCommentForm">
+          <label class="grade-field grade-field--comment">
+            <span>Комментарий</span>
+            <textarea
+              rows="4"
+              formControlName="comment"
+              placeholder="Напишите комментарий к проверке..."
+            ></textarea>
+          </label>
+        </div>
+
+        <div *ngIf="getAssessmentCommentError()" class="banner banner--error banner--compact">
+          {{ getAssessmentCommentError() }}
+        </div>
+
+        <div *ngIf="assessmentError()" class="banner banner--error banner--compact">
+          {{ assessmentError() }}
+        </div>
+
+        <div *ngIf="assessmentSuccess()" class="banner banner--success banner--compact">
+          {{ assessmentSuccess() }}
+        </div>
+
+        <div class="submission-grade-card__actions">
+          <button
+            type="button"
+            class="primary-btn"
+            (click)="saveAssessment()"
+            [disabled]="isSavingAssessment() || assessmentCommentForm.invalid"
+          >
+            {{ isSavingAssessment() ? 'Сохранение...' : 'Сохранить проверку' }}
+          </button>
+        </div>
+      </ng-container>
+    </section>
+
+    <section *ngIf="canGradeSubmission() && !hasAssessmentCriteria() && !isAssessmentFormLoading()" class="submission-grade-card" [formGroup]="gradeForm">
       <div class="section-header">
         <h2 class="section-title">Выставить оценку</h2>
       </div>

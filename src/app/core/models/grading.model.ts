@@ -126,3 +126,66 @@ export interface AssignmentGradingRules {
   mainCriteriaThreshold: MainCriteriaThresholdSettings;
   penalties: AssignmentPenaltySettings;
 }
+
+export interface CriterionAssessmentValue {
+  criterionId: string;
+  value: unknown;
+}
+
+export interface GradePenaltyInput {
+  deadline: boolean;
+  progress: boolean;
+  requiredCriteria: boolean;
+}
+
+export interface SaveSubmissionAssessmentRequest {
+  values: CriterionAssessmentValue[];
+  penalties: GradePenaltyInput;
+  comment?: string | null;
+}
+
+export interface AppliedAssessmentPenalty {
+  source?: string | null;
+  label?: string | null;
+  value?: number | null;
+}
+
+export interface AssessmentCalculationDetails {
+  mainPoints?: number | null;
+  bonusPoints?: number | null;
+  penaltyPoints?: number | null;
+  multiplier?: number | null;
+  finalGrade?: number | null;
+  appliedPenalties?: AppliedAssessmentPenalty[] | null;
+  [key: string]: unknown;
+}
+
+export interface SubmissionAssessment {
+  id: string;
+  submissionId: string;
+  assignmentId: string;
+  studentId: string;
+  checkedByUserId: string;
+  criterionValues: unknown;
+  mainPoints: number;
+  bonusPoints: number;
+  penaltyPoints: number;
+  multiplier: number;
+  finalGrade: number;
+  calculationDetails?: AssessmentCalculationDetails | null;
+  checkedAtUtc: string;
+  comment?: string | null;
+}
+
+export interface SubmissionAssessmentCriterionGroup extends CriterionGroup {
+  criteria: Criterion[];
+}
+
+export interface SubmissionAssessmentForm {
+  submissionId: string;
+  assignmentId: string;
+  studentId: string;
+  rules: AssignmentGradingRules;
+  groups: SubmissionAssessmentCriterionGroup[];
+  savedAssessment?: SubmissionAssessment | null;
+}
