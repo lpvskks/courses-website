@@ -15,12 +15,15 @@ import { forkJoin, timer } from 'rxjs';
 import { Assignment, AssignmentSubmission, SubmissionFile } from '../../../../core/models/assigment.model';
 import { AssignmentComment } from '../../../../core/models/assignment-comment.model';
 import {
+  AssignmentGradingMode,
+  AssignmentGradingRules,
   ChoiceCriterionSettings,
   Criterion,
   CriterionCategory,
   CriterionGroupWithCriteria,
   CriterionSettings,
   CriterionType,
+  MainCriteriaThresholdBehavior,
   MultiplierCriterionSettings,
   ScoreCriterionSettings,
 } from '../../../../core/models/grading.model';
@@ -94,6 +97,8 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   finalSubmissionActionId = signal<string | null>(null);
   isDraftLoading = signal(false);
   draftActionKey = signal<string | null>(null);
+  isGradingRulesLoading = signal(false);
+  isSavingGradingRules = signal(false);
   isCriteriaSettingsLoading = signal(false);
   isCreatingCriterionGroup = signal(false);
   isSavingCriterionGroup = signal(false);
@@ -115,6 +120,8 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   captainTeamSuccess = signal('');
   draftError = signal('');
   draftSuccess = signal('');
+  gradingRulesError = signal('');
+  gradingRulesSuccess = signal('');
   criteriaSettingsError = signal('');
   criteriaSettingsSuccess = signal('');
   processingMemberKey = signal<string | null>(null);
@@ -165,6 +172,20 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     passScore: [10, [Validators.required, Validators.min(0)]],
     failScore: [0, [Validators.required, Validators.min(0)]],
     multiplier: [1, [Validators.required, Validators.min(0)]],
+  });
+
+  readonly gradingRulesForm = this.fb.nonNullable.group({
+    mode: ['sum_points' as AssignmentGradingMode, [Validators.required]],
+    baseGrade: [100, [Validators.min(0)]],
+    thresholdEnabled: [false],
+    threshold: [60, [Validators.min(0), Validators.max(100)]],
+    thresholdBehavior: ['set_to_zero' as MainCriteriaThresholdBehavior],
+    deadlinePenaltyEnabled: [false],
+    deadlinePenaltyPercentage: [10, [Validators.min(0), Validators.max(100)]],
+    progressPenaltyEnabled: [false],
+    progressPenaltyPercentage: [10, [Validators.min(0), Validators.max(100)]],
+    requiredCriteriaPenaltyEnabled: [false],
+    requiredCriteriaPenaltyPercentage: [10, [Validators.min(0), Validators.max(100)]],
   });
 
   readonly selectedTeamStudents = computed(() => {
@@ -236,6 +257,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     this.unavailableAssignmentNotice.set('');
     this.resetTeamsState();
     this.resetDraftState();
+    this.resetGradingRulesState();
     this.resetCriteriaSettingsState();
 
     forkJoin({
@@ -250,6 +272,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
         this.loadCaptainInfoIfAvailable(assignment);
         this.loadTeamsIfAvailable(assignment);
         this.loadMySubmissionIfAvailable(assignment);
+        this.loadGradingRulesIfAvailable(assignment);
         this.loadCriteriaSettingsIfAvailable(assignment);
       },
       error: (err) => {
@@ -320,6 +343,26 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     this.draftActionKey.set(null);
   }
 
+  resetGradingRulesState(): void {
+    this.gradingRulesError.set('');
+    this.gradingRulesSuccess.set('');
+    this.isGradingRulesLoading.set(false);
+    this.isSavingGradingRules.set(false);
+    this.gradingRulesForm.reset({
+      mode: 'sum_points',
+      baseGrade: 100,
+      thresholdEnabled: false,
+      threshold: 60,
+      thresholdBehavior: 'set_to_zero',
+      deadlinePenaltyEnabled: false,
+      deadlinePenaltyPercentage: 10,
+      progressPenaltyEnabled: false,
+      progressPenaltyPercentage: 10,
+      requiredCriteriaPenaltyEnabled: false,
+      requiredCriteriaPenaltyPercentage: 10,
+    });
+  }
+
   resetCriteriaSettingsState(): void {
     this.criterionGroups.set([]);
     this.criteriaSettingsError.set('');
@@ -336,6 +379,126 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     this.criterionGroupForm.reset({ name: '', description: '', sortOrder: 0 });
     this.editCriterionGroupForm.reset({ name: '', description: '', sortOrder: 0 });
     this.resetCriterionForm();
+  }
+
+  loadGradingRulesIfAvailable(assignment: Assignment): void {
+    if (!this.canManageCriteriaSettings()) {
+      return;
+    }
+
+    this.loadGradingRules(assignment.id);
+  }
+
+  loadGradingRules(assignmentId: string): void {
+    this.isGradingRulesLoading.set(true);
+    this.gradingRulesError.set('');
+
+    this.assignmentsService.getGradingRules(assignmentId).subscribe({
+      next: (rules) => {
+        this.applyGradingRulesToForm(rules);
+        this.isGradingRulesLoading.set(false);
+      },
+      error: (err) => {
+        console.error(err);
+        this.gradingRulesError.set(this.getApiErrorMessage(err, 'Не удалось загрузить правила расчета оценки'));
+        this.isGradingRulesLoading.set(false);
+      },
+    });
+  }
+
+  applyGradingRulesToForm(rules: AssignmentGradingRules): void {
+    this.gradingRulesForm.reset({
+      mode: rules.mode ?? 'sum_points',
+      baseGrade: rules.baseGrade ?? 100,
+      thresholdEnabled: rules.mainCriteriaThreshold?.enabled ?? false,
+      threshold: rules.mainCriteriaThreshold?.threshold ?? 60,
+      thresholdBehavior: rules.mainCriteriaThreshold?.behavior ?? 'set_to_zero',
+      deadlinePenaltyEnabled: rules.penalties?.deadline?.enabled ?? false,
+      deadlinePenaltyPercentage: rules.penalties?.deadline?.percentage ?? 10,
+      progressPenaltyEnabled: rules.penalties?.progress?.enabled ?? false,
+      progressPenaltyPercentage: rules.penalties?.progress?.percentage ?? 10,
+      requiredCriteriaPenaltyEnabled: rules.penalties?.requiredCriteria?.enabled ?? false,
+      requiredCriteriaPenaltyPercentage: rules.penalties?.requiredCriteria?.percentage ?? 10,
+    });
+  }
+
+  saveGradingRules(): void {
+    const assignment = this.assignment();
+    this.gradingRulesError.set('');
+    this.gradingRulesSuccess.set('');
+    this.gradingRulesForm.markAllAsTouched();
+
+    if (!assignment || this.gradingRulesForm.invalid || this.isSavingGradingRules()) {
+      return;
+    }
+
+    const payload = this.buildGradingRulesPayload();
+    if (!payload) {
+      return;
+    }
+
+    this.isSavingGradingRules.set(true);
+
+    this.assignmentsService.updateGradingRules(assignment.id, payload).subscribe({
+      next: (rules) => {
+        this.applyGradingRulesToForm(rules);
+        this.isSavingGradingRules.set(false);
+        this.gradingRulesSuccess.set('Правила расчета оценки сохранены');
+      },
+      error: (err) => {
+        console.error(err);
+        this.isSavingGradingRules.set(false);
+        this.gradingRulesError.set(this.getApiErrorMessage(err, 'Не удалось сохранить правила расчета оценки'));
+      },
+    });
+  }
+
+  buildGradingRulesPayload(): AssignmentGradingRules | null {
+    const mode = this.gradingRulesForm.controls.mode.getRawValue();
+    const thresholdEnabled = this.gradingRulesForm.controls.thresholdEnabled.getRawValue();
+
+    if (mode === 'base_with_multipliers' && this.gradingRulesForm.controls.baseGrade.getRawValue() <= 0) {
+      this.gradingRulesError.set('Для расчета через множители нужна базовая оценка больше 0');
+      return null;
+    }
+
+    return {
+      mode,
+      baseGrade:
+        mode === 'base_with_multipliers'
+          ? this.gradingRulesForm.controls.baseGrade.getRawValue()
+          : null,
+      mainCriteriaThreshold: {
+        enabled: thresholdEnabled,
+        threshold: thresholdEnabled
+          ? this.gradingRulesForm.controls.threshold.getRawValue()
+          : null,
+        behavior: thresholdEnabled
+          ? this.gradingRulesForm.controls.thresholdBehavior.getRawValue()
+          : null,
+      },
+      penalties: {
+        deadline: this.buildPenaltyRule(
+          this.gradingRulesForm.controls.deadlinePenaltyEnabled.getRawValue(),
+          this.gradingRulesForm.controls.deadlinePenaltyPercentage.getRawValue(),
+        ),
+        progress: this.buildPenaltyRule(
+          this.gradingRulesForm.controls.progressPenaltyEnabled.getRawValue(),
+          this.gradingRulesForm.controls.progressPenaltyPercentage.getRawValue(),
+        ),
+        requiredCriteria: this.buildPenaltyRule(
+          this.gradingRulesForm.controls.requiredCriteriaPenaltyEnabled.getRawValue(),
+          this.gradingRulesForm.controls.requiredCriteriaPenaltyPercentage.getRawValue(),
+        ),
+      },
+    };
+  }
+
+  private buildPenaltyRule(enabled: boolean, percentage: number) {
+    return {
+      enabled,
+      percentage: enabled ? percentage : null,
+    };
   }
 
   loadCriteriaSettingsIfAvailable(assignment: Assignment): void {
