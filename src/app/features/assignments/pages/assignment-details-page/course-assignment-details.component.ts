@@ -100,6 +100,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   isGradingRulesLoading = signal(false);
   isSavingGradingRules = signal(false);
   isCriteriaSettingsLoading = signal(false);
+  isCriteriaSettingsModalOpen = signal(false);
   isCreatingCriterionGroup = signal(false);
   isSavingCriterionGroup = signal(false);
   deletingCriterionGroupId = signal<string | null>(null);
@@ -134,6 +135,13 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   editingCriterionId = signal<string | null>(null);
   isSavingCriterion = signal(false);
   deletingCriterionId = signal<string | null>(null);
+
+  readonly scoreOptions = Array.from({ length: 101 }, (_, index) => index);
+  readonly positiveScoreOptions = Array.from({ length: 100 }, (_, index) => index + 1);
+  readonly percentageOptions = [0, 5, 10, 15, 20, 25, 30, 40, 50, 75, 100];
+  readonly baseGradeOptions = [50, 60, 70, 80, 90, 100, 120, 150, 200];
+  readonly multiplierOptions = [0, 0.5, 0.75, 0.9, 1, 1.1, 1.25, 1.5, 2];
+
   optionRows = signal<CriterionOptionRow[]>([
     { value: 'option_1', label: 'Вариант 1', score: 0 },
     { value: 'option_2', label: 'Вариант 2', score: 0 },
@@ -513,6 +521,22 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     return this.isAdmin() || this.isTeacher();
   }
 
+  openCriteriaSettingsModal(): void {
+    if (!this.canManageCriteriaSettings()) {
+      return;
+    }
+
+    this.isCriteriaSettingsModalOpen.set(true);
+  }
+
+  closeCriteriaSettingsModal(): void {
+    if (this.isSavingGradingRules() || this.isCreatingCriterionGroup() || this.isSavingCriterionGroup() || this.isSavingCriterion()) {
+      return;
+    }
+
+    this.isCriteriaSettingsModalOpen.set(false);
+  }
+
   loadCriteriaSettings(assignmentId: string): void {
     this.isCriteriaSettingsLoading.set(true);
     this.criteriaSettingsError.set('');
@@ -531,7 +555,9 @@ export class CourseAssignmentDetailsComponent implements OnInit {
               groups
                 .map((group, index) => ({
                   ...group,
-                  criteria: criteriaByGroup[index] ?? [],
+                  criteria: [...(criteriaByGroup[index] ?? [])].sort(
+                    (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name),
+                  ),
                 }))
                 .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)),
             );
@@ -642,6 +668,51 @@ export class CourseAssignmentDetailsComponent implements OnInit {
       });
   }
 
+  moveCriterionGroup(group: CriterionGroupWithCriteria, direction: -1 | 1): void {
+    const assignment = this.assignment();
+    const groups = this.criterionGroups();
+    const currentIndex = groups.findIndex((item) => item.id === group.id);
+    const targetIndex = currentIndex + direction;
+    const target = groups[targetIndex];
+
+    if (
+      !assignment ||
+      !target ||
+      this.isSavingCriterionGroup() ||
+      this.isCreatingCriterionGroup() ||
+      this.deletingCriterionGroupId()
+    ) {
+      return;
+    }
+
+    this.criteriaSettingsError.set('');
+    this.criteriaSettingsSuccess.set('');
+    this.isSavingCriterionGroup.set(true);
+
+    const reorderedGroups = [...groups];
+    [reorderedGroups[currentIndex], reorderedGroups[targetIndex]] = [
+      reorderedGroups[targetIndex],
+      reorderedGroups[currentIndex],
+    ];
+
+    forkJoin(
+      reorderedGroups.map((item, index) =>
+        this.assignmentsService.updateCriterionGroup(item.id, { sortOrder: index }),
+      ),
+    ).subscribe({
+      next: () => {
+        this.isSavingCriterionGroup.set(false);
+        this.criteriaSettingsSuccess.set('Порядок групп обновлен');
+        this.loadCriteriaSettings(assignment.id);
+      },
+      error: (err) => {
+        console.error(err);
+        this.isSavingCriterionGroup.set(false);
+        this.criteriaSettingsError.set(this.getApiErrorMessage(err, 'Не удалось изменить порядок групп'));
+      },
+    });
+  }
+
   deleteCriterionGroup(group: CriterionGroupWithCriteria): void {
     const assignment = this.assignment();
 
@@ -740,6 +811,54 @@ export class CourseAssignmentDetailsComponent implements OnInit {
         console.error(err);
         this.isSavingCriterion.set(false);
         this.criteriaSettingsError.set(this.getApiErrorMessage(err, 'Не удалось сохранить критерий'));
+      },
+    });
+  }
+
+  moveCriterion(
+    group: CriterionGroupWithCriteria,
+    criterion: Criterion,
+    direction: -1 | 1,
+  ): void {
+    const assignment = this.assignment();
+    const criteria = group.criteria;
+    const currentIndex = criteria.findIndex((item) => item.id === criterion.id);
+    const targetIndex = currentIndex + direction;
+    const target = criteria[targetIndex];
+
+    if (
+      !assignment ||
+      !target ||
+      this.isSavingCriterion() ||
+      this.deletingCriterionId()
+    ) {
+      return;
+    }
+
+    this.criteriaSettingsError.set('');
+    this.criteriaSettingsSuccess.set('');
+    this.isSavingCriterion.set(true);
+
+    const reorderedCriteria = [...criteria];
+    [reorderedCriteria[currentIndex], reorderedCriteria[targetIndex]] = [
+      reorderedCriteria[targetIndex],
+      reorderedCriteria[currentIndex],
+    ];
+
+    forkJoin(
+      reorderedCriteria.map((item, index) =>
+        this.assignmentsService.updateCriterion(item.id, { sortOrder: index }),
+      ),
+    ).subscribe({
+      next: () => {
+        this.isSavingCriterion.set(false);
+        this.criteriaSettingsSuccess.set('Порядок критериев обновлен');
+        this.loadCriteriaSettings(assignment.id);
+      },
+      error: (err) => {
+        console.error(err);
+        this.isSavingCriterion.set(false);
+        this.criteriaSettingsError.set(this.getApiErrorMessage(err, 'Не удалось изменить порядок критериев'));
       },
     });
   }
@@ -1890,11 +2009,17 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   }
 
   isCaptainSelectionOpen(assignment: Assignment): boolean {
-    if (!assignment.captainSelectionEndsAtUtc) {
-      return this.isTeamFormationOpen(assignment);
+    const selectionEndsAt =
+      assignment.captainSelectionEndsAtUtc ||
+      assignment.teamFormationStartsAtUtc ||
+      assignment.startsAtUtc ||
+      assignment.teamFormationEndsAtUtc;
+
+    if (!selectionEndsAt) {
+      return false;
     }
 
-    return new Date().getTime() <= new Date(assignment.captainSelectionEndsAtUtc).getTime();
+    return new Date().getTime() <= new Date(selectionEndsAt).getTime();
   }
 
   isTeamFormationOpen(assignment: Assignment): boolean {
@@ -2276,6 +2401,21 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     return this.normalizeCriterionType(this.criterionForm.controls.type.getRawValue());
   }
 
+  getCriterionScoreOptions(): number[] {
+    const maxScore = this.criterionForm.controls.maxScore.getRawValue();
+    return this.scoreOptions.filter((score) => score <= maxScore);
+  }
+
+  getScoreMinOptions(): number[] {
+    const maxValue = this.criterionForm.controls.scoreMaxValue.getRawValue();
+    return this.scoreOptions.filter((score) => score < maxValue);
+  }
+
+  getScoreMaxOptions(): number[] {
+    const minValue = this.criterionForm.controls.scoreMinValue.getRawValue();
+    return this.positiveScoreOptions.filter((score) => score > minValue);
+  }
+
   isCriterionFormOpenFor(groupId: string): boolean {
     return this.criterionFormGroupId() === groupId;
   }
@@ -2497,4 +2637,7 @@ interface CriterionOptionRow {
   label: string;
   score: number;
 }
+
+
+
 

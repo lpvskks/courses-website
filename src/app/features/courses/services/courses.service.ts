@@ -43,7 +43,7 @@ export interface MyCourseGrade {
 })
 export class CoursesService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'http://111.88.155.34:5196/api/courses';
+  private readonly baseUrl = 'http://localhost:5196/api/courses';
 
   getCourses(): Observable<Course[]> {
     return this.http.get<Course[]>(this.baseUrl);

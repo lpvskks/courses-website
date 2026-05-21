@@ -462,6 +462,14 @@ export class AssignmentSubmissionDetailsComponent implements OnInit {
     return this.asScoreSettings(criterion.settings).maxValue ?? criterion.maxScore ?? 100;
   }
 
+  getScoreValueOptions(criterion: Criterion): number[] {
+    const min = this.getScoreMin(criterion);
+    const max = this.getScoreMax(criterion);
+    const length = Math.max(0, max - min + 1);
+
+    return Array.from({ length }, (_, index) => min + index);
+  }
+
   getCriterionOptions(criterion: Criterion): CriterionOption[] {
     return this.asChoiceSettings(criterion.settings).options ?? [];
   }
@@ -548,4 +556,5 @@ export class AssignmentSubmissionDetailsComponent implements OnInit {
     return settings as Partial<ChoiceCriterionSettings>;
   }
 }
+
 

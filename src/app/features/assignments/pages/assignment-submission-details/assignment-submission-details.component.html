@@ -91,13 +91,7 @@
                 <div class="criterion-control" [ngSwitch]="criterion.type">
                   <label class="grade-field" *ngSwitchCase="'score'">
                     <span>Баллы</span>
-                    <input
-                      type="number"
-                      [min]="getScoreMin(criterion)"
-                      [max]="getScoreMax(criterion)"
-                      [value]="getNumberCriterionValue(criterion.id)"
-                      (input)="setNumberCriterionValue(criterion.id, $event)"
-                    />
+                    <select [value]="getNumberCriterionValue(criterion.id)" (change)="setNumberCriterionValue(criterion.id, $event)"><option *ngFor="let score of getScoreValueOptions(criterion)" [value]="score">{{ score }}</option></select>
                   </label>
 
                   <label class="grade-field" *ngSwitchCase="'pass_fail'">
@@ -307,4 +301,5 @@
     </section>
   </ng-container>
 </section>
+
 

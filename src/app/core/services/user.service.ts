@@ -14,7 +14,7 @@ export class UserService {
 
   getMyRole(): Observable<UserRoleResponse> {
     return this.http.get<UserRoleResponse>(
-      'http://111.88.155.34:5196/api/users/me/role'
+      'http://localhost:5196/api/users/me/role'
     );
   }
 }

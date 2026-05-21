@@ -14,8 +14,8 @@ export interface UsersResponse {
 
 export class UsersService {
   private readonly http = inject(HttpClient);
-  private readonly coursesUrl = 'http://111.88.155.34:5196/api/courses';
-  private readonly usersUrl = 'http://111.88.155.34:5196/api/users';
+  private readonly coursesUrl = 'http://localhost:5196/api/courses';
+  private readonly usersUrl = 'http://localhost:5196/api/users';
 
   getUsers(params: {
     Search?: string;

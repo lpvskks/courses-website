@@ -4,12 +4,15 @@
   (keydown.escape)="onEsc()"
   tabindex="0"
 >
-  <section class="assignment-modal">
+  <section class="assignment-modal" [class.assignment-modal--choice]="step() === 'criteria-choice'">
     <div class="assignment-modal__header">
       <div>
-        <h2 class="assignment-modal__title">Новое задание</h2>
+        <h2 class="assignment-modal__title">
+          {{ getModalTitle() }}
+        </h2>
         <p class="assignment-modal__subtitle">
-          Заполните условия, сроки и параметры командной работы
+          {{ getModalSubtitle() }}
+
         </p>
       </div>
 
@@ -28,7 +31,12 @@
       {{ submitError() }}
     </div>
 
-    <form class="assignment-form" [formGroup]="form" (ngSubmit)="save()">
+    <form
+      *ngIf="step() === 'details'"
+      class="assignment-form"
+      [formGroup]="form"
+      (ngSubmit)="save()"
+    >
       <section class="form-card">
         <div class="form-section__header">
           <h3 class="form-section__title">Основная информация</h3>
@@ -235,6 +243,279 @@
         </button>
       </div>
     </form>
+
+    <div *ngIf="step() === 'criteria-choice'" class="criteria-choice-panel">
+      <section class="form-card criteria-choice-card">
+        <div class="criteria-choice-card__actions">
+          <button type="button" class="primary-btn" (click)="openCriteriaSetup()">
+            Настроить критерии оценивания
+          </button>
+          <button type="button" class="secondary-btn" (click)="configureCriteriaLater()">
+            Настроить позже
+          </button>
+        </div>
+      </section>
+    </div>
+    <div *ngIf="step() === 'criteria'" class="criteria-setup">
+      <section class="form-card criteria-summary" *ngIf="createdAssignment() as assignment">
+        <div>
+          <span class="criteria-summary__label">Задание создано</span>
+          <h3 class="criteria-summary__title">{{ assignment.title }}</h3>
+        </div>
+        <span class="criteria-summary__counter">
+          {{ criterionGroups().length }} групп / {{ getCriteriaCount() }} критериев
+        </span>
+      </section>
+
+      <div *ngIf="criteriaError()" class="banner banner--error">
+        {{ criteriaError() }}
+      </div>
+
+      <div *ngIf="criteriaSuccess()" class="banner banner--success">
+        {{ criteriaSuccess() }}
+      </div>
+
+      <section class="form-card">
+        <div class="form-section__header">
+          <h3 class="form-section__title">Группа критериев</h3>
+        </div>
+
+        <form
+          class="criteria-group-form"
+          [formGroup]="criterionGroupForm"
+          (ngSubmit)="createCriterionGroup()"
+        >
+          <div class="field">
+            <label class="field__label" for="criterion-group-name">Название группы</label>
+            <input
+              id="criterion-group-name"
+              class="field__control"
+              type="text"
+              formControlName="name"
+              placeholder="Например: Основные требования"
+            />
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="criterion-group-description">Описание</label>
+            <input
+              id="criterion-group-description"
+              class="field__control"
+              type="text"
+              formControlName="description"
+              placeholder="Короткое пояснение"
+            />
+          </div>
+
+          <button
+            type="submit"
+            class="primary-btn"
+            [disabled]="isCriteriaSaving() || criterionGroupForm.invalid"
+          >
+            Добавить группу
+          </button>
+        </form>
+      </section>
+
+      <section class="form-card" *ngIf="criterionGroups().length">
+        <div class="form-section__header">
+          <h3 class="form-section__title">Новый критерий</h3>
+          <span class="form-section__hint">Выберите группу и настройте способ оценивания</span>
+        </div>
+
+        <form class="criterion-form" [formGroup]="criterionForm" (ngSubmit)="saveCriterion()">
+          <div class="form-grid form-grid--criteria">
+            <div class="field">
+              <label class="field__label" for="criterion-group-select">Группа</label>
+              <select
+                id="criterion-group-select"
+                class="field__control"
+                [value]="selectedCriterionGroupId() || ''"
+                (change)="selectCriterionGroup($any($event.target).value)"
+              >
+                <option value="">Выберите группу</option>
+                <option *ngFor="let group of criterionGroups(); trackBy: trackByCriterionGroupId" [value]="group.id">
+                  {{ group.name }}
+                </option>
+              </select>
+            </div>
+
+            <div class="field field--span-2">
+              <label class="field__label" for="criterion-name">Название критерия</label>
+              <input
+                id="criterion-name"
+                class="field__control"
+                type="text"
+                formControlName="name"
+                placeholder="Например: Работа запускается без ошибок"
+              />
+            </div>
+
+            <div class="field">
+              <label class="field__label" for="criterion-type">Тип</label>
+              <select
+                id="criterion-type"
+                class="field__control"
+                formControlName="type"
+                (change)="onCriterionTypeChange()"
+              >
+                <option value="pass_fail">Выполнен / не выполнен</option>
+                <option value="score">Диапазон баллов</option>
+                <option value="option">Варианты ответа</option>
+                <option value="multiplier">Множитель</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label class="field__label" for="criterion-category">Категория</label>
+              <select id="criterion-category" class="field__control" formControlName="category">
+                <option value="main">Основной</option>
+                <option value="bonus">Бонус</option>
+                <option value="penalty">Штраф</option>
+                <option value="multiplier">Множитель</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label class="field__label" for="criterion-max-score">Макс. баллы</label>
+              <select id="criterion-max-score" class="field__control" formControlName="maxScore" [disabled]="criterionForm.controls.type.getRawValue() === 'multiplier'"><option *ngFor="let score of positiveScoreOptions" [ngValue]="score">{{ score }}</option></select>
+            </div>
+
+            <div class="field field--span-2">
+              <label class="field__label" for="criterion-description">Описание</label>
+              <input
+                id="criterion-description"
+                class="field__control"
+                type="text"
+                formControlName="description"
+                placeholder="Что именно проверяет критерий"
+              />
+            </div>
+          </div>
+
+          <div class="criterion-settings" *ngIf="criterionForm.controls.type.getRawValue() === 'pass_fail'">
+            <div class="form-grid form-grid--small">
+              <div class="field">
+                <label class="field__label" for="criterion-pass-score">Выполнен</label>
+                <select id="criterion-pass-score" class="field__control" formControlName="passScore"><option *ngFor="let score of getCriterionScoreOptions()" [ngValue]="score">{{ score }}</option></select>
+              </div>
+              <div class="field">
+                <label class="field__label" for="criterion-fail-score">Не выполнен</label>
+                <select id="criterion-fail-score" class="field__control" formControlName="failScore"><option *ngFor="let score of getCriterionScoreOptions()" [ngValue]="score">{{ score }}</option></select>
+              </div>
+            </div>
+          </div>
+
+          <div class="criterion-settings" *ngIf="criterionForm.controls.type.getRawValue() === 'score'">
+            <div class="form-grid form-grid--small">
+              <div class="field">
+                <label class="field__label" for="criterion-score-min">Минимум</label>
+                <select id="criterion-score-min" class="field__control" formControlName="scoreMinValue"><option *ngFor="let score of getScoreMinOptions()" [ngValue]="score">{{ score }}</option></select>
+              </div>
+              <div class="field">
+                <label class="field__label" for="criterion-score-max">Максимум</label>
+                <select id="criterion-score-max" class="field__control" formControlName="scoreMaxValue"><option *ngFor="let score of getScoreMaxOptions()" [ngValue]="score">{{ score }}</option></select>
+              </div>
+            </div>
+          </div>
+
+          <div class="criterion-settings" *ngIf="criterionForm.controls.type.getRawValue() === 'option'">
+            <div class="criterion-options-head">
+              <strong>Варианты</strong>
+              <button type="button" class="secondary-btn" (click)="addOptionRow()">Добавить вариант</button>
+            </div>
+
+            <div class="criterion-option-row" *ngFor="let row of optionRows(); let i = index; trackBy: trackByOptionRow">
+              <input
+                class="field__control"
+                type="text"
+                [value]="row.value"
+                placeholder="Код"
+                (input)="updateOptionRow(i, 'value', $event)"
+              />
+              <input
+                class="field__control"
+                type="text"
+                [value]="row.label"
+                placeholder="Название"
+                (input)="updateOptionRow(i, 'label', $event)"
+              />
+              <select class="field__control" [value]="row.score" (change)="updateOptionRow(i, 'score', $event)"><option *ngFor="let score of getCriterionScoreOptions()" [value]="score">{{ score }}</option></select>
+              <button type="button" class="file-chip__remove" (click)="removeOptionRow(i)">
+                Удалить
+              </button>
+            </div>
+          </div>
+
+          <div class="criterion-settings" *ngIf="criterionForm.controls.type.getRawValue() === 'multiplier'">
+            <div class="field">
+              <label class="field__label" for="criterion-multiplier">Коэффициент</label>
+              <select id="criterion-multiplier" class="field__control" formControlName="multiplier">
+                <option *ngFor="let multiplier of multiplierOptions" [ngValue]="multiplier">
+                  {{ multiplier }}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div class="assignment-modal__actions">
+            <button
+              type="submit"
+              class="primary-btn"
+              [disabled]="isCriteriaSaving() || criterionForm.invalid || !selectedCriterionGroupId()"
+            >
+              {{ isCriteriaSaving() ? 'Сохраняем...' : 'Добавить критерий' }}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="criteria-groups-list" *ngIf="criterionGroups().length">
+        <article
+          class="criteria-group-card"
+          *ngFor="let group of criterionGroups(); trackBy: trackByCriterionGroupId"
+        >
+          <div>
+            <span class="criteria-group-card__eyebrow">Группа критериев</span>
+            <h3 class="criteria-group-card__title">{{ group.name }}</h3>
+            <p class="criteria-group-card__description" *ngIf="group.description">
+              {{ group.description }}
+            </p>
+          </div>
+
+          <div class="criteria-list" *ngIf="group.criteria.length; else emptyCriteria">
+            <div class="criterion-row" *ngFor="let criterion of group.criteria; trackBy: trackByCriterionId">
+              <div>
+                <strong>{{ criterion.name }}</strong>
+                <span>{{ getCriterionTypeLabel(criterion.type) }} / {{ getCriterionCategoryLabel(criterion.category) }}</span>
+              </div>
+              <b>{{ criterion.maxScore }} балл.</b>
+            </div>
+          </div>
+
+          <ng-template #emptyCriteria>
+            <div class="empty-criteria">В группе пока нет критериев.</div>
+          </ng-template>
+        </article>
+      </section>
+
+      <div class="assignment-modal__actions">
+        <button type="button" class="secondary-btn" (click)="finishCriteriaSetup()" [disabled]="isCriteriaSaving()">
+          Настроить позже
+        </button>
+        <button type="button" class="primary-btn" (click)="finishCriteriaSetup()" [disabled]="isCriteriaSaving()">
+          Готово
+        </button>
+      </div>
+    </div>
   </section>
 </div>
+
+
+
+
+
+
+
+
 

@@ -249,6 +249,15 @@
             {{ currentAssignment.text }}
           </p>
 
+          <div class="assignment-hero__actions" *ngIf="canManageCriteriaSettings()">
+            <button type="button" class="primary-btn" (click)="openCriteriaSettingsModal()">
+              Настроить критерии оценивания
+            </button>
+            <span class="assignment-hero__criteria-count">
+              {{ getCriteriaTotalCount() }} критериев
+            </span>
+          </div>
+
           <div class="captain-panel" *ngIf="shouldShowCaptainControls(currentAssignment)">
             <div class="captain-panel__content">
               <span class="captain-panel__label">Капитан команды</span>
@@ -333,6 +342,27 @@
       </div>
     </section>
 
+    <div
+      class="criteria-modal-backdrop"
+      *ngIf="canManageCriteriaSettings() && isCriteriaSettingsModalOpen()"
+      (click)="closeCriteriaSettingsModal()"
+    >
+      <section class="criteria-modal" (click)="$event.stopPropagation()">
+        <div class="criteria-modal__head">
+          <div>
+            <h2 class="criteria-modal__title">Настройка критериев</h2>
+          </div>
+
+          <button
+            type="button"
+            class="criteria-modal__close"
+            aria-label="Закрыть настройки критериев"
+            (click)="closeCriteriaSettingsModal()"
+            [disabled]="isSavingGradingRules() || isCreatingCriterionGroup() || isSavingCriterionGroup() || isSavingCriterion()"
+          >
+            ×
+          </button>
+        </div>
     <section class="grading-rules-card" *ngIf="canManageCriteriaSettings()">
       <div class="section-header criteria-settings-card__header">
         <div>
@@ -389,12 +419,7 @@
             *ngIf="gradingRulesForm.controls.mode.getRawValue() === 'base_with_multipliers'"
           >
             <label for="grading-base-grade">Базовая оценка</label>
-            <input
-              id="grading-base-grade"
-              type="number"
-              min="1"
-              formControlName="baseGrade"
-            />
+            <select id="grading-base-grade" formControlName="baseGrade"><option *ngFor="let grade of baseGradeOptions" [ngValue]="grade">{{ grade }}</option></select>
           </div>
         </section>
 
@@ -414,7 +439,7 @@
           <div class="grading-rules-grid" *ngIf="gradingRulesForm.controls.thresholdEnabled.getRawValue()">
             <div class="criteria-field">
               <label for="grading-threshold">Порог, %</label>
-              <input id="grading-threshold" type="number" min="0" max="100" formControlName="threshold" />
+              <select id="grading-threshold" formControlName="threshold"><option *ngFor="let percent of percentageOptions" [ngValue]="percent">{{ percent }}%</option></select>
             </div>
 
             <div class="criteria-field">
@@ -444,7 +469,7 @@
 
               <div class="criteria-field" *ngIf="gradingRulesForm.controls.deadlinePenaltyEnabled.getRawValue()">
                 <label for="deadline-penalty">Штраф, %</label>
-                <input id="deadline-penalty" type="number" min="0" max="100" formControlName="deadlinePenaltyPercentage" />
+                <select id="deadline-penalty" formControlName="deadlinePenaltyPercentage"><option *ngFor="let percent of percentageOptions" [ngValue]="percent">{{ percent }}%</option></select>
               </div>
             </article>
 
@@ -459,7 +484,7 @@
 
               <div class="criteria-field" *ngIf="gradingRulesForm.controls.progressPenaltyEnabled.getRawValue()">
                 <label for="progress-penalty">Штраф, %</label>
-                <input id="progress-penalty" type="number" min="0" max="100" formControlName="progressPenaltyPercentage" />
+                <select id="progress-penalty" formControlName="progressPenaltyPercentage"><option *ngFor="let percent of percentageOptions" [ngValue]="percent">{{ percent }}%</option></select>
               </div>
             </article>
 
@@ -474,7 +499,7 @@
 
               <div class="criteria-field" *ngIf="gradingRulesForm.controls.requiredCriteriaPenaltyEnabled.getRawValue()">
                 <label for="required-criteria-penalty">Штраф, %</label>
-                <input id="required-criteria-penalty" type="number" min="0" max="100" formControlName="requiredCriteriaPenaltyPercentage" />
+                <select id="required-criteria-penalty" formControlName="requiredCriteriaPenaltyPercentage"><option *ngFor="let percent of percentageOptions" [ngValue]="percent">{{ percent }}%</option></select>
               </div>
             </article>
           </div>
@@ -536,13 +561,8 @@
             id="criterion-group-description"
             type="text"
             formControlName="description"
-            placeholder="Короткое пояснение для проверяющего"
+            placeholder="Короткое пояснение"
           />
-        </div>
-
-        <div class="criteria-field criteria-field--order">
-          <label for="criterion-group-sort">Порядок</label>
-          <input id="criterion-group-sort" type="number" min="0" formControlName="sortOrder" />
         </div>
 
         <button
@@ -566,12 +586,11 @@
         <div class="criteria-groups-list" *ngIf="criterionGroups().length">
           <article
             class="criteria-group-card"
-            *ngFor="let group of criterionGroups(); trackBy: trackByCriterionGroupId"
+            *ngFor="let group of criterionGroups(); let groupIndex = index; trackBy: trackByCriterionGroupId"
           >
             <ng-container *ngIf="editingCriterionGroupId() !== group.id; else editCriterionGroup">
               <div class="criteria-group-card__head">
                 <div>
-                  <div class="criteria-group-card__eyebrow">Группа {{ group.sortOrder }}</div>
                   <h3 class="criteria-group-card__title">{{ group.name }}</h3>
                   <p class="criteria-group-card__description" *ngIf="group.description">
                     {{ group.description }}
@@ -579,13 +598,39 @@
                 </div>
 
                 <div class="criteria-group-card__actions">
+                  <div class="reorder-actions" *ngIf="criterionGroups().length > 1">
+                    <button
+                      type="button"
+                      class="reorder-btn"
+                      (click)="moveCriterionGroup(group, -1)"
+                      [disabled]="groupIndex === 0 || isSavingCriterionGroup() || !!deletingCriterionGroupId()"
+                      aria-label="Поднять группу выше"
+                      title="Выше"
+                    >
+                      ↑
+                    </button>
+
+                    <button
+                      type="button"
+                      class="reorder-btn"
+                      (click)="moveCriterionGroup(group, 1)"
+                      [disabled]="groupIndex === criterionGroups().length - 1 || isSavingCriterionGroup() || !!deletingCriterionGroupId()"
+                      aria-label="Опустить группу ниже"
+                      title="Ниже"
+                    >
+                      ↓
+                    </button>
+                  </div>
+
                   <button
                     type="button"
-                    class="secondary-action-btn"
+                    class="criteria-plus-btn"
                     (click)="openCreateCriterionForm(group)"
                     [disabled]="!!deletingCriterionGroupId() || isSavingCriterion()"
+                    [attr.aria-label]="'Добавить критерий в группу ' + group.name"
+                    title="Добавить критерий"
                   >
-                    Добавить критерий
+                    +
                   </button>
 
                   <button
@@ -636,16 +681,6 @@
                   />
                 </div>
 
-                <div class="criteria-field criteria-field--order">
-                  <label for="edit-criterion-group-sort">Порядок</label>
-                  <input
-                    id="edit-criterion-group-sort"
-                    type="number"
-                    min="0"
-                    formControlName="sortOrder"
-                  />
-                </div>
-
                 <div class="criteria-group-edit__actions">
                   <button
                     type="button"
@@ -675,7 +710,6 @@
             >
               <div class="criterion-form__head">
                 <div>
-                  <span class="criteria-group-card__eyebrow">Критерий</span>
                   <h4>{{ getCriterionFormTitle() }}</h4>
                 </div>
 
@@ -733,23 +767,7 @@
 
                 <div class="criteria-field">
                   <label for="criterion-max-score">Макс. баллы</label>
-                  <input
-                    id="criterion-max-score"
-                    type="number"
-                    min="1"
-                    formControlName="maxScore"
-                    [readonly]="getCriterionFormType() === 'multiplier'"
-                  />
-                </div>
-
-                <div class="criteria-field">
-                  <label for="criterion-sort-order">Порядок</label>
-                  <input
-                    id="criterion-sort-order"
-                    type="number"
-                    min="0"
-                    formControlName="sortOrder"
-                  />
+                  <select id="criterion-max-score" formControlName="maxScore" [disabled]="getCriterionFormType() === 'multiplier'"><option *ngFor="let score of positiveScoreOptions" [ngValue]="score">{{ score }}</option></select>
                 </div>
 
                 <div class="criteria-field criteria-field--description">
@@ -769,12 +787,12 @@
                 <div class="criterion-form__grid criterion-form__grid--small">
                   <div class="criteria-field">
                     <label for="criterion-pass-score">Выполнен</label>
-                    <input id="criterion-pass-score" type="number" min="0" formControlName="passScore" />
+                    <select id="criterion-pass-score" formControlName="passScore"><option *ngFor="let score of getCriterionScoreOptions()" [ngValue]="score">{{ score }}</option></select>
                   </div>
 
                   <div class="criteria-field">
                     <label for="criterion-fail-score">Не выполнен</label>
-                    <input id="criterion-fail-score" type="number" min="0" formControlName="failScore" />
+                    <select id="criterion-fail-score" formControlName="failScore"><option *ngFor="let score of getCriterionScoreOptions()" [ngValue]="score">{{ score }}</option></select>
                   </div>
                 </div>
               </div>
@@ -785,12 +803,12 @@
                 <div class="criterion-form__grid criterion-form__grid--small">
                   <div class="criteria-field">
                     <label for="criterion-score-min">Минимум</label>
-                    <input id="criterion-score-min" type="number" min="0" formControlName="scoreMinValue" />
+                    <select id="criterion-score-min" formControlName="scoreMinValue"><option *ngFor="let score of getScoreMinOptions()" [ngValue]="score">{{ score }}</option></select>
                   </div>
 
                   <div class="criteria-field">
                     <label for="criterion-score-max">Максимум</label>
-                    <input id="criterion-score-max" type="number" min="1" formControlName="scoreMaxValue" />
+                    <select id="criterion-score-max" formControlName="scoreMaxValue"><option *ngFor="let score of getScoreMaxOptions()" [ngValue]="score">{{ score }}</option></select>
                   </div>
                 </div>
               </div>
@@ -829,12 +847,7 @@
 
                     <div class="criteria-field">
                       <label>Баллы</label>
-                      <input
-                        type="number"
-                        min="0"
-                        [value]="option.score"
-                        (input)="updateOptionRow(optionIndex, 'score', $event)"
-                      />
+                      <select [value]="option.score" (change)="updateOptionRow(optionIndex, 'score', $event)"><option *ngFor="let score of getCriterionScoreOptions()" [value]="score">{{ score }}</option></select>
                     </div>
 
                     <button
@@ -855,13 +868,7 @@
                 <div class="criterion-form__grid criterion-form__grid--small">
                   <div class="criteria-field">
                     <label for="criterion-multiplier">Множитель</label>
-                    <input
-                      id="criterion-multiplier"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      formControlName="multiplier"
-                    />
+                    <select id="criterion-multiplier" formControlName="multiplier"><option *ngFor="let multiplier of multiplierOptions" [ngValue]="multiplier">{{ multiplier }}</option></select>
                   </div>
                 </div>
               </div>
@@ -884,7 +891,7 @@
             <div class="criteria-list" *ngIf="group.criteria.length; else emptyCriteriaGroup">
               <article
                 class="criterion-row"
-                *ngFor="let criterion of group.criteria; trackBy: trackByCriterionId"
+                *ngFor="let criterion of group.criteria; let criterionIndex = index; trackBy: trackByCriterionId"
               >
                 <div class="criterion-row__main">
                   <h4>{{ criterion.name }}</h4>
@@ -893,11 +900,35 @@
 
                 <div class="criterion-row__meta">
                   <span>{{ getCriterionTypeLabel(criterion.type) }}</span>
-                  <span>{{ getCriterionCategoryLabel(criterion.category) }}</span>
+                  <span *ngIf="criterion.category !== 'multiplier'">{{ getCriterionCategoryLabel(criterion.category) }}</span>
                   <strong>{{ criterion.maxScore }} балл.</strong>
                 </div>
 
                 <div class="criterion-row__actions">
+                  <div class="reorder-actions" *ngIf="group.criteria.length > 1">
+                    <button
+                      type="button"
+                      class="reorder-btn"
+                      (click)="moveCriterion(group, criterion, -1)"
+                      [disabled]="criterionIndex === 0 || isSavingCriterion() || !!deletingCriterionId()"
+                      aria-label="Поднять критерий выше"
+                      title="Выше"
+                    >
+                      ↑
+                    </button>
+
+                    <button
+                      type="button"
+                      class="reorder-btn"
+                      (click)="moveCriterion(group, criterion, 1)"
+                      [disabled]="criterionIndex === group.criteria.length - 1 || isSavingCriterion() || !!deletingCriterionId()"
+                      aria-label="Опустить критерий ниже"
+                      title="Ниже"
+                    >
+                      ↓
+                    </button>
+                  </div>
+
                   <button
                     type="button"
                     class="secondary-action-btn"
@@ -931,6 +962,8 @@
       </ng-container>
     </section>
 
+      </section>
+    </div>
     <section class="submission-card" *ngIf="shouldShowSubmissionBlock(currentAssignment)">
       <div class="section-header submission-card__header">
         <div>
@@ -2269,4 +2302,12 @@
     </section>
   </ng-container>
 </section>
+
+
+
+
+
+
+
+
 

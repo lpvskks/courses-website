@@ -113,9 +113,9 @@ export interface SubmissionGrade {
 })
 export class AssignmentsService {
   private readonly http = inject(HttpClient);
-  private readonly rootUrl = 'http://111.88.155.34:5196';
-  private readonly baseUrl = 'http://111.88.155.34:5196/api/assignments';
-  private readonly submissionsUrl = 'http://111.88.155.34:5196/api/submissions';
+  private readonly rootUrl = 'http://localhost:5196';
+  private readonly baseUrl = 'http://localhost:5196/api/assignments';
+  private readonly submissionsUrl = 'http://localhost:5196/api/submissions';
 
   getAssignmentById(assignmentId: string): Observable<Assignment> {
     return this.http.get<Assignment>(`${this.baseUrl}/${assignmentId}`);
@@ -344,7 +344,7 @@ export class AssignmentsService {
 
   updateSubmissionGrade(submissionId: string, payload: { value: number; comment?: string | null }) {
     return this.http.put<SubmissionGrade>(
-      `http://111.88.155.34:5196/api/submissions/${submissionId}/grade`,
+      `http://localhost:5196/api/submissions/${submissionId}/grade`,
       payload,
     );
   }
