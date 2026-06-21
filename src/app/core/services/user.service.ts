@@ -14,11 +14,7 @@ export class UserService {
 
   getMyRole(): Observable<UserRoleResponse> {
     return this.http.get<UserRoleResponse>(
-<<<<<<< Updated upstream
-      'http://111.88.155.34:5196/api/users/me/role'
-=======
       'http://111.88.156.199:5196/api/users/me/role'
->>>>>>> Stashed changes
     );
   }
 }

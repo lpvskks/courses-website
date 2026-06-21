@@ -14,13 +14,9 @@ export interface UsersResponse {
 
 export class UsersService {
   private readonly http = inject(HttpClient);
-<<<<<<< Updated upstream
-  private readonly coursesUrl = 'http://111.88.155.34:5196/api/courses';
-  private readonly usersUrl = 'http://111.88.155.34:5196/api/users';
-=======
+
   private readonly coursesUrl = 'http://111.88.156.199:5196/api/courses';
   private readonly usersUrl = 'http://111.88.156.199:5196/api/users';
->>>>>>> Stashed changes
 
   getUsers(params: {
     Search?: string;
