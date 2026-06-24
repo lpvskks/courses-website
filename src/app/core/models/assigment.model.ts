@@ -27,6 +27,11 @@ export interface Assignment {
   isVisible: boolean;
   isClosed: boolean;
   requiresSubmission: boolean;
+  peerReviewEnabled: boolean;
+  peerReviewStartsAtUtc: string | null;
+  peerReviewEndsAtUtc: string | null;
+  peerReviewRequiredReviewsCount: number | null;
+  peerReviewPenaltyPercent: number;
   deadline: string;
   created: string;
   files: AssignmentFile[];

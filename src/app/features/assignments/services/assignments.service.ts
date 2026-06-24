@@ -29,7 +29,37 @@ export interface CreateAssignmentRequest {
   teamFormationEndsAtUtc: string;
   isVisible: boolean;
   requiresSubmission: boolean;
+  peerReviewEnabled: boolean;
+  peerReviewStartsAtUtc: string | null;
+  peerReviewEndsAtUtc: string | null;
+  peerReviewRequiredReviewsCount: number | null;
+  peerReviewPenaltyPercent: number | null;
   deadline: string;
+}
+
+export interface UpdateAssignmentPeerReviewRequest {
+  peerReviewEnabled: boolean;
+  peerReviewStartsAtUtc: string | null;
+  peerReviewEndsAtUtc: string | null;
+  peerReviewRequiredReviewsCount: number | null;
+  peerReviewPenaltyPercent: number | null;
+}
+
+export interface PeerReviewAssignmentInfo {
+  id: string;
+  assignmentId: string;
+  reviewerTeamId: string;
+  reviewerTeamName: string;
+  reviewedTeamId: string;
+  reviewedTeamName: string;
+  createdAtUtc: string;
+}
+
+export interface PeerReviewAssignmentResult {
+  assignmentId: string;
+  teamsCount: number;
+  requiredReviewsCount: number;
+  assignments: PeerReviewAssignmentInfo[];
 }
 
 export interface AssignmentCaptainInfo {
@@ -138,6 +168,20 @@ export class AssignmentsService {
     return this.http.put<AssignmentGradingRules>(
       `${this.baseUrl}/${assignmentId}/grading-rules`,
       payload,
+    );
+  }
+
+  updatePeerReviewSettings(
+    assignmentId: string,
+    payload: UpdateAssignmentPeerReviewRequest,
+  ): Observable<Assignment> {
+    return this.http.patch<Assignment>(`${this.baseUrl}/${assignmentId}/peer-review`, payload);
+  }
+
+  generatePeerReviewAssignments(assignmentId: string): Observable<PeerReviewAssignmentResult> {
+    return this.http.post<PeerReviewAssignmentResult>(
+      `${this.baseUrl}/${assignmentId}/peer-review/assignments/generate`,
+      {},
     );
   }
 

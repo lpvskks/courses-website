@@ -333,6 +333,126 @@
       </div>
     </section>
 
+    <section class="peer-review-settings-card" *ngIf="canManageCriteriaSettings()">
+      <div class="section-header criteria-settings-card__header">
+        <div>
+          <h2 class="section-title">Peer-review</h2>
+          <p class="section-subtitle">
+            Настройте окно взаимной проверки, обязательное число проверяемых команд и штраф за невыполнение.
+          </p>
+        </div>
+
+        <span
+          class="status-badge"
+          [class.status-badge--submission]="currentAssignment.peerReviewEnabled"
+        >
+          {{ currentAssignment.peerReviewEnabled ? 'Включено' : 'Выключено' }}
+        </span>
+      </div>
+
+      <div *ngIf="peerReviewSettingsError()" class="banner banner--error">
+        {{ peerReviewSettingsError() }}
+      </div>
+
+      <div *ngIf="peerReviewSettingsSuccess()" class="banner banner--success">
+        {{ peerReviewSettingsSuccess() }}
+      </div>
+
+      <form
+        class="peer-review-settings-form"
+        [formGroup]="peerReviewSettingsForm"
+        (ngSubmit)="savePeerReviewSettings()"
+      >
+        <section class="grading-rules-section">
+          <label class="grading-toggle-row">
+            <input type="checkbox" formControlName="peerReviewEnabled" />
+            <span>
+              <strong>Включить peer-review для задания</strong>
+              <small>После открытия окна студенты будут оценивать решения назначенных команд.</small>
+            </span>
+          </label>
+
+          <div class="peer-review-settings-grid" *ngIf="peerReviewSettingsForm.controls.peerReviewEnabled.getRawValue()">
+            <div class="criteria-field">
+              <label for="assignment-peer-review-starts-at">Начало peer-review</label>
+              <input
+                id="assignment-peer-review-starts-at"
+                type="datetime-local"
+                formControlName="peerReviewStartsAtUtc"
+              />
+              <span class="field-error" *ngIf="getPeerReviewStartsAtError()">
+                {{ getPeerReviewStartsAtError() }}
+              </span>
+            </div>
+
+            <div class="criteria-field">
+              <label for="assignment-peer-review-ends-at">Дедлайн peer-review</label>
+              <input
+                id="assignment-peer-review-ends-at"
+                type="datetime-local"
+                formControlName="peerReviewEndsAtUtc"
+              />
+              <span class="field-error" *ngIf="getPeerReviewEndsAtError()">
+                {{ getPeerReviewEndsAtError() }}
+              </span>
+            </div>
+
+            <div class="criteria-field">
+              <label for="assignment-peer-review-required-count">Команд на проверку</label>
+              <input
+                id="assignment-peer-review-required-count"
+                type="number"
+                min="1"
+                max="100"
+                formControlName="peerReviewRequiredReviewsCount"
+              />
+              <span class="field-error" *ngIf="getPeerReviewRequiredCountError()">
+                {{ getPeerReviewRequiredCountError() }}
+              </span>
+            </div>
+
+            <div class="criteria-field">
+              <label for="assignment-peer-review-penalty">Штраф, %</label>
+              <input
+                id="assignment-peer-review-penalty"
+                type="number"
+                min="0"
+                max="100"
+                formControlName="peerReviewPenaltyPercent"
+              />
+              <span class="field-error" *ngIf="getPeerReviewPenaltyError()">
+                {{ getPeerReviewPenaltyError() }}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <div class="peer-review-settings-actions">
+          <button
+            type="button"
+            class="secondary-action-btn"
+            *ngIf="currentAssignment.peerReviewEnabled"
+            (click)="generatePeerReviewAssignments()"
+            [disabled]="isGeneratingPeerReviewAssignments() || isSavingPeerReviewSettings()"
+          >
+            {{
+              isGeneratingPeerReviewAssignments()
+                ? 'Формируем...'
+                : 'Сформировать назначения'
+            }}
+          </button>
+
+          <button
+            type="submit"
+            class="primary-btn"
+            [disabled]="isSavingPeerReviewSettings() || peerReviewSettingsForm.invalid || !isPeerReviewSettingsValid()"
+          >
+            {{ isSavingPeerReviewSettings() ? 'Сохраняем...' : 'Сохранить peer-review' }}
+          </button>
+        </div>
+      </form>
+    </section>
+
     <section class="grading-rules-card" *ngIf="canManageCriteriaSettings()">
       <div class="section-header criteria-settings-card__header">
         <div>

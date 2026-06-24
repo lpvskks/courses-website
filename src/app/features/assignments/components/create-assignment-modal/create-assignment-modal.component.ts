@@ -47,6 +47,11 @@ export class CreateAssignmentModalComponent {
     teamFormationEndsAtUtc: ['', [Validators.required]],
     isVisible: [true],
     requiresSubmission: [true],
+    peerReviewEnabled: [false],
+    peerReviewStartsAtUtc: [''],
+    peerReviewEndsAtUtc: [''],
+    peerReviewRequiredReviewsCount: [1, [Validators.min(1), Validators.max(100)]],
+    peerReviewPenaltyPercent: [20, [Validators.min(0), Validators.max(100)]],
     deadline: ['', [Validators.required]],
   });
 
@@ -110,12 +115,14 @@ export class CreateAssignmentModalComponent {
       !this.courseId ||
       !this.isCaptainSelectionDateFilled() ||
       !this.areDatesValid() ||
-      !this.areTeamSizesValid()
+      !this.areTeamSizesValid() ||
+      !this.isPeerReviewValid()
     ) {
       return;
     }
 
     this.isSaving.set(true);
+    const peerReviewEnabled = this.form.controls.peerReviewEnabled.getRawValue();
 
     this.assignmentsService
       .createAssignment({
@@ -132,6 +139,19 @@ export class CreateAssignmentModalComponent {
         ),
         isVisible: this.form.controls.isVisible.getRawValue(),
         requiresSubmission: this.form.controls.requiresSubmission.getRawValue(),
+        peerReviewEnabled,
+        peerReviewStartsAtUtc: peerReviewEnabled
+          ? this.toUtcIso(this.form.controls.peerReviewStartsAtUtc.getRawValue())
+          : null,
+        peerReviewEndsAtUtc: peerReviewEnabled
+          ? this.toUtcIso(this.form.controls.peerReviewEndsAtUtc.getRawValue())
+          : null,
+        peerReviewRequiredReviewsCount: peerReviewEnabled
+          ? this.form.controls.peerReviewRequiredReviewsCount.getRawValue()
+          : null,
+        peerReviewPenaltyPercent: peerReviewEnabled
+          ? this.form.controls.peerReviewPenaltyPercent.getRawValue()
+          : null,
         deadline: this.toUtcIso(this.form.controls.deadline.getRawValue()),
       })
       .subscribe({
@@ -267,6 +287,44 @@ export class CreateAssignmentModalComponent {
     return '';
   }
 
+  get peerReviewStartsAtError(): string {
+    if (!this.form.controls.peerReviewEnabled.getRawValue()) return '';
+
+    const control = this.form.controls.peerReviewStartsAtUtc;
+    if (control.touched && !control.getRawValue()) return 'Выберите начало peer-review';
+    if (!this.isPeerReviewWindowValid()) return 'Начало peer-review должно быть раньше дедлайна peer-review';
+    return '';
+  }
+
+  get peerReviewEndsAtError(): string {
+    if (!this.form.controls.peerReviewEnabled.getRawValue()) return '';
+
+    const control = this.form.controls.peerReviewEndsAtUtc;
+    if (control.touched && !control.getRawValue()) return 'Выберите дедлайн peer-review';
+    if (!this.isPeerReviewWindowValid()) return 'Дедлайн peer-review должен быть позже начала';
+    return '';
+  }
+
+  get peerReviewRequiredReviewsCountError(): string {
+    if (!this.form.controls.peerReviewEnabled.getRawValue()) return '';
+
+    const control = this.form.controls.peerReviewRequiredReviewsCount;
+    if (!control.touched && !control.errors) return '';
+    if (control.errors?.['min']) return 'Минимум 1 команда';
+    if (control.errors?.['max']) return 'Не больше 100 команд';
+    return '';
+  }
+
+  get peerReviewPenaltyPercentError(): string {
+    if (!this.form.controls.peerReviewEnabled.getRawValue()) return '';
+
+    const control = this.form.controls.peerReviewPenaltyPercent;
+    if (!control.touched && !control.errors) return '';
+    if (control.errors?.['min']) return 'Штраф не может быть меньше 0';
+    if (control.errors?.['max']) return 'Штраф не может быть больше 100';
+    return '';
+  }
+
   private getRequiredDateError(
     controlName: 'startsAtUtc' | 'teamFormationEndsAtUtc' | 'deadline',
     message: string,
@@ -288,8 +346,34 @@ export class CreateAssignmentModalComponent {
       this.isCaptainSelectionDateValid() &&
       this.isTeamFormationDateValid() &&
       this.isStartsAtValid() &&
-      this.isDeadlineValid()
+      this.isDeadlineValid() &&
+      this.isPeerReviewValid()
     );
+  }
+
+  private isPeerReviewValid(): boolean {
+    if (!this.form.controls.peerReviewEnabled.getRawValue()) {
+      return true;
+    }
+
+    return (
+      Boolean(this.form.controls.peerReviewStartsAtUtc.getRawValue()) &&
+      Boolean(this.form.controls.peerReviewEndsAtUtc.getRawValue()) &&
+      this.isPeerReviewWindowValid() &&
+      this.form.controls.peerReviewRequiredReviewsCount.valid &&
+      this.form.controls.peerReviewPenaltyPercent.valid
+    );
+  }
+
+  private isPeerReviewWindowValid(): boolean {
+    const startsAt = this.form.controls.peerReviewStartsAtUtc.getRawValue();
+    const endsAt = this.form.controls.peerReviewEndsAtUtc.getRawValue();
+
+    if (!startsAt || !endsAt) {
+      return true;
+    }
+
+    return new Date(startsAt).getTime() < new Date(endsAt).getTime();
   }
 
   private isCaptainSelectionDateValid(): boolean {

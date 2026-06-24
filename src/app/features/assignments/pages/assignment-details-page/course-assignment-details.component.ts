@@ -36,6 +36,7 @@ import {
   AssignmentTeamMember,
   AssignmentTeamStudent,
   AssignmentsService,
+  UpdateAssignmentPeerReviewRequest,
 } from '../../../assignments/services/assignments.service';
 import { ProfileService } from '../../../profile/services/profile.service';
 import { UsersService } from '../../../users/services/users.service';
@@ -122,6 +123,8 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   draftSuccess = signal('');
   gradingRulesError = signal('');
   gradingRulesSuccess = signal('');
+  peerReviewSettingsError = signal('');
+  peerReviewSettingsSuccess = signal('');
   criteriaSettingsError = signal('');
   criteriaSettingsSuccess = signal('');
   processingMemberKey = signal<string | null>(null);
@@ -187,6 +190,17 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     requiredCriteriaPenaltyEnabled: [false],
     requiredCriteriaPenaltyPercentage: [10, [Validators.min(0), Validators.max(100)]],
   });
+
+  readonly peerReviewSettingsForm = this.fb.nonNullable.group({
+    peerReviewEnabled: [false],
+    peerReviewStartsAtUtc: [''],
+    peerReviewEndsAtUtc: [''],
+    peerReviewRequiredReviewsCount: [1, [Validators.min(1), Validators.max(100)]],
+    peerReviewPenaltyPercent: [20, [Validators.min(0), Validators.max(100)]],
+  });
+
+  isSavingPeerReviewSettings = signal(false);
+  isGeneratingPeerReviewAssignments = signal(false);
 
   readonly selectedTeamStudents = computed(() => {
     const selectedIds = new Set(this.selectedTeamStudentIds());
@@ -258,6 +272,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     this.resetTeamsState();
     this.resetDraftState();
     this.resetGradingRulesState();
+    this.resetPeerReviewSettingsState();
     this.resetCriteriaSettingsState();
 
     forkJoin({
@@ -272,6 +287,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
         this.loadCaptainInfoIfAvailable(assignment);
         this.loadTeamsIfAvailable(assignment);
         this.loadMySubmissionIfAvailable(assignment);
+        this.applyPeerReviewSettingsIfAvailable(assignment);
         this.loadGradingRulesIfAvailable(assignment);
         this.loadCriteriaSettingsIfAvailable(assignment);
       },
@@ -379,6 +395,200 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     this.criterionGroupForm.reset({ name: '', description: '', sortOrder: 0 });
     this.editCriterionGroupForm.reset({ name: '', description: '', sortOrder: 0 });
     this.resetCriterionForm();
+  }
+
+  resetPeerReviewSettingsState(): void {
+    this.peerReviewSettingsError.set('');
+    this.peerReviewSettingsSuccess.set('');
+    this.isSavingPeerReviewSettings.set(false);
+    this.isGeneratingPeerReviewAssignments.set(false);
+    this.peerReviewSettingsForm.reset({
+      peerReviewEnabled: false,
+      peerReviewStartsAtUtc: '',
+      peerReviewEndsAtUtc: '',
+      peerReviewRequiredReviewsCount: 1,
+      peerReviewPenaltyPercent: 20,
+    });
+  }
+
+  applyPeerReviewSettingsIfAvailable(assignment: Assignment): void {
+    if (!this.canManageCriteriaSettings()) {
+      return;
+    }
+
+    this.applyPeerReviewSettingsToForm(assignment);
+  }
+
+  applyPeerReviewSettingsToForm(assignment: Assignment): void {
+    this.peerReviewSettingsForm.reset({
+      peerReviewEnabled: assignment.peerReviewEnabled ?? false,
+      peerReviewStartsAtUtc: this.toDateTimeLocalInput(assignment.peerReviewStartsAtUtc),
+      peerReviewEndsAtUtc: this.toDateTimeLocalInput(assignment.peerReviewEndsAtUtc),
+      peerReviewRequiredReviewsCount: assignment.peerReviewRequiredReviewsCount ?? 1,
+      peerReviewPenaltyPercent: assignment.peerReviewPenaltyPercent ?? 20,
+    });
+  }
+
+  savePeerReviewSettings(): void {
+    const assignment = this.assignment();
+    this.peerReviewSettingsError.set('');
+    this.peerReviewSettingsSuccess.set('');
+    this.peerReviewSettingsForm.markAllAsTouched();
+
+    if (
+      !assignment ||
+      !this.canManageCriteriaSettings() ||
+      this.peerReviewSettingsForm.invalid ||
+      !this.isPeerReviewSettingsValid() ||
+      this.isSavingPeerReviewSettings()
+    ) {
+      return;
+    }
+
+    const payload = this.buildPeerReviewSettingsPayload();
+    if (!payload) {
+      return;
+    }
+
+    this.isSavingPeerReviewSettings.set(true);
+
+    this.assignmentsService.updatePeerReviewSettings(assignment.id, payload).subscribe({
+      next: (updatedAssignment) => {
+        this.assignment.set(updatedAssignment);
+        this.applyPeerReviewSettingsToForm(updatedAssignment);
+        this.isSavingPeerReviewSettings.set(false);
+        this.peerReviewSettingsSuccess.set('Настройки peer-review сохранены');
+      },
+      error: (err) => {
+        console.error(err);
+        this.isSavingPeerReviewSettings.set(false);
+        this.peerReviewSettingsError.set(
+          this.getApiErrorMessage(err, 'Не удалось сохранить настройки peer-review'),
+        );
+      },
+    });
+  }
+
+  generatePeerReviewAssignments(): void {
+    const assignment = this.assignment();
+    this.peerReviewSettingsError.set('');
+    this.peerReviewSettingsSuccess.set('');
+
+    if (!assignment || !assignment.peerReviewEnabled || this.isGeneratingPeerReviewAssignments()) {
+      return;
+    }
+
+    this.isGeneratingPeerReviewAssignments.set(true);
+
+    this.assignmentsService.generatePeerReviewAssignments(assignment.id).subscribe({
+      next: (result) => {
+        this.isGeneratingPeerReviewAssignments.set(false);
+        this.peerReviewSettingsSuccess.set(
+          `Назначения peer-review сформированы: ${result.assignments.length}`,
+        );
+      },
+      error: (err) => {
+        console.error(err);
+        this.isGeneratingPeerReviewAssignments.set(false);
+        this.peerReviewSettingsError.set(
+          this.getApiErrorMessage(err, 'Не удалось сформировать назначения peer-review'),
+        );
+      },
+    });
+  }
+
+  buildPeerReviewSettingsPayload(): UpdateAssignmentPeerReviewRequest | null {
+    const enabled = this.peerReviewSettingsForm.controls.peerReviewEnabled.getRawValue();
+
+    if (!enabled) {
+      return {
+        peerReviewEnabled: false,
+        peerReviewStartsAtUtc: null,
+        peerReviewEndsAtUtc: null,
+        peerReviewRequiredReviewsCount: null,
+        peerReviewPenaltyPercent: this.peerReviewSettingsForm.controls.peerReviewPenaltyPercent.getRawValue(),
+      };
+    }
+
+    const startsAt = this.peerReviewSettingsForm.controls.peerReviewStartsAtUtc.getRawValue();
+    const endsAt = this.peerReviewSettingsForm.controls.peerReviewEndsAtUtc.getRawValue();
+
+    if (!startsAt || !endsAt) {
+      this.peerReviewSettingsError.set('Укажите начало и дедлайн peer-review');
+      return null;
+    }
+
+    return {
+      peerReviewEnabled: true,
+      peerReviewStartsAtUtc: this.toUtcIso(startsAt),
+      peerReviewEndsAtUtc: this.toUtcIso(endsAt),
+      peerReviewRequiredReviewsCount:
+        this.peerReviewSettingsForm.controls.peerReviewRequiredReviewsCount.getRawValue(),
+      peerReviewPenaltyPercent: this.peerReviewSettingsForm.controls.peerReviewPenaltyPercent.getRawValue(),
+    };
+  }
+
+  isPeerReviewSettingsValid(): boolean {
+    if (!this.peerReviewSettingsForm.controls.peerReviewEnabled.getRawValue()) {
+      return this.peerReviewSettingsForm.controls.peerReviewPenaltyPercent.valid;
+    }
+
+    const startsAt = this.peerReviewSettingsForm.controls.peerReviewStartsAtUtc.getRawValue();
+    const endsAt = this.peerReviewSettingsForm.controls.peerReviewEndsAtUtc.getRawValue();
+
+    if (!startsAt || !endsAt) {
+      return false;
+    }
+
+    return (
+      new Date(startsAt).getTime() < new Date(endsAt).getTime() &&
+      this.peerReviewSettingsForm.controls.peerReviewRequiredReviewsCount.valid &&
+      this.peerReviewSettingsForm.controls.peerReviewPenaltyPercent.valid
+    );
+  }
+
+  getPeerReviewStartsAtError(): string {
+    if (!this.peerReviewSettingsForm.controls.peerReviewEnabled.getRawValue()) return '';
+    const control = this.peerReviewSettingsForm.controls.peerReviewStartsAtUtc;
+    if (control.touched && !control.getRawValue()) return 'Выберите начало peer-review';
+    if (!this.isPeerReviewWindowValid()) return 'Начало должно быть раньше дедлайна';
+    return '';
+  }
+
+  getPeerReviewEndsAtError(): string {
+    if (!this.peerReviewSettingsForm.controls.peerReviewEnabled.getRawValue()) return '';
+    const control = this.peerReviewSettingsForm.controls.peerReviewEndsAtUtc;
+    if (control.touched && !control.getRawValue()) return 'Выберите дедлайн peer-review';
+    if (!this.isPeerReviewWindowValid()) return 'Дедлайн должен быть позже начала';
+    return '';
+  }
+
+  getPeerReviewRequiredCountError(): string {
+    if (!this.peerReviewSettingsForm.controls.peerReviewEnabled.getRawValue()) return '';
+    const control = this.peerReviewSettingsForm.controls.peerReviewRequiredReviewsCount;
+    if (!control.touched && !control.errors) return '';
+    if (control.errors?.['min']) return 'Минимум 1 команда';
+    if (control.errors?.['max']) return 'Не больше 100 команд';
+    return '';
+  }
+
+  getPeerReviewPenaltyError(): string {
+    const control = this.peerReviewSettingsForm.controls.peerReviewPenaltyPercent;
+    if (!control.touched && !control.errors) return '';
+    if (control.errors?.['min']) return 'Штраф не может быть меньше 0';
+    if (control.errors?.['max']) return 'Штраф не может быть больше 100';
+    return '';
+  }
+
+  isPeerReviewWindowValid(): boolean {
+    const startsAt = this.peerReviewSettingsForm.controls.peerReviewStartsAtUtc.getRawValue();
+    const endsAt = this.peerReviewSettingsForm.controls.peerReviewEndsAtUtc.getRawValue();
+
+    if (!startsAt || !endsAt) {
+      return true;
+    }
+
+    return new Date(startsAt).getTime() < new Date(endsAt).getTime();
   }
 
   loadGradingRulesIfAvailable(assignment: Assignment): void {
@@ -2449,6 +2659,24 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     }
 
     return fallback;
+  }
+
+  private toDateTimeLocalInput(value: string | null | undefined): string {
+    if (!value) {
+      return '';
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return '';
+    }
+
+    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+    return localDate.toISOString().slice(0, 16);
+  }
+
+  private toUtcIso(value: string): string {
+    return new Date(value).toISOString();
   }
 
   trackByCommentId(_: number, comment: AssignmentComment): string {

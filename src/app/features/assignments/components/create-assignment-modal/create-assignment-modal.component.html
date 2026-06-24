@@ -225,6 +225,74 @@
         </div>
       </section>
 
+      <section class="form-card">
+        <div class="form-section__header">
+          <h3 class="form-section__title">Peer-review</h3>
+        </div>
+
+        <label class="checkbox-card checkbox-card--full">
+          <input type="checkbox" formControlName="peerReviewEnabled" />
+          <span>
+            <strong>Включить peer-review</strong>
+            <small>Студенты будут оценивать решения назначенных команд после сдачи.</small>
+          </span>
+        </label>
+
+        <div class="form-grid form-grid--four peer-review-grid" *ngIf="form.controls.peerReviewEnabled.getRawValue()">
+          <div class="field">
+            <label class="field__label" for="peer-review-starts-at">Начало peer-review</label>
+            <input
+              id="peer-review-starts-at"
+              class="field__control"
+              type="datetime-local"
+              formControlName="peerReviewStartsAtUtc"
+            />
+            <div *ngIf="peerReviewStartsAtError" class="field__error">{{ peerReviewStartsAtError }}</div>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="peer-review-ends-at">Дедлайн peer-review</label>
+            <input
+              id="peer-review-ends-at"
+              class="field__control"
+              type="datetime-local"
+              formControlName="peerReviewEndsAtUtc"
+            />
+            <div *ngIf="peerReviewEndsAtError" class="field__error">{{ peerReviewEndsAtError }}</div>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="peer-review-required-count">Команд на проверку</label>
+            <input
+              id="peer-review-required-count"
+              class="field__control"
+              type="number"
+              min="1"
+              max="100"
+              formControlName="peerReviewRequiredReviewsCount"
+            />
+            <div *ngIf="peerReviewRequiredReviewsCountError" class="field__error">
+              {{ peerReviewRequiredReviewsCountError }}
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="peer-review-penalty">Штраф, %</label>
+            <input
+              id="peer-review-penalty"
+              class="field__control"
+              type="number"
+              min="0"
+              max="100"
+              formControlName="peerReviewPenaltyPercent"
+            />
+            <div *ngIf="peerReviewPenaltyPercentError" class="field__error">
+              {{ peerReviewPenaltyPercentError }}
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div class="assignment-modal__actions">
         <button type="button" class="secondary-btn" (click)="close()" [disabled]="isSaving()">
           Отмена

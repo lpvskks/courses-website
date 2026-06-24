@@ -253,6 +253,10 @@
   gap: 10px;
 }
 
+.peer-review-grid {
+  margin-top: 10px;
+}
+
 .checkbox-card {
   min-height: 42px;
   display: flex;
@@ -263,6 +267,11 @@
   border: 1px solid #d0e2ff;
   background: #f8fbff;
   cursor: pointer;
+}
+
+.checkbox-card--full {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .checkbox-card input {
