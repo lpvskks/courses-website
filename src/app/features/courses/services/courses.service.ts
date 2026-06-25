@@ -30,12 +30,14 @@ export interface CourseStudentGrade {
   assignmentId: string;
   assignmentTitle: string;
   grade: number | null;
+  calculatedGrade?: number | null;
 }
 
 export interface MyCourseGrade {
   assignmentId: string;
   assignmentTitle: string;
   grade: number | null;
+  calculatedGrade?: number | null;
 }
 
 @Injectable({

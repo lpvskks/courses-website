@@ -16,6 +16,11 @@ import {
   MyCourseGrade,
 } from '../../services/courses.service';
 
+type GradeWithCalculated = {
+  grade: number | null;
+  calculatedGrade?: number | null;
+};
+
 @Component({
   selector: 'app-course-grades-page',
   standalone: true,
@@ -116,8 +121,22 @@ export class CourseGradesPageComponent implements OnInit {
     this.router.navigate(['/courses', courseId]);
   }
 
-  getGradeLabel(grade: number | null): string {
-    return grade === null ? 'Преподаватель еще не оценил' : String(grade);
+  getFinalGradeLabel(grade: GradeWithCalculated): string {
+    const finalGrade = this.getFinalGrade(grade);
+
+    return finalGrade === null ? 'Преподаватель еще не оценил' : this.formatGrade(finalGrade);
+  }
+
+  getBaseGradeLabel(grade: GradeWithCalculated): string {
+    return grade.grade === null ? '—' : this.formatGrade(grade.grade);
+  }
+
+  hasCalculatedGrade(grade: GradeWithCalculated): boolean {
+    return grade.calculatedGrade !== null && grade.calculatedGrade !== undefined;
+  }
+
+  isGradeEmpty(grade: GradeWithCalculated): boolean {
+    return this.getFinalGrade(grade) === null;
   }
 
   trackByCourseGrade(_: number, grade: CourseStudentGrade): string {
@@ -126,5 +145,13 @@ export class CourseGradesPageComponent implements OnInit {
 
   trackByMyGrade(_: number, grade: MyCourseGrade): string {
     return grade.assignmentId;
+  }
+
+  private getFinalGrade(grade: GradeWithCalculated): number | null {
+    return grade.calculatedGrade ?? grade.grade;
+  }
+
+  private formatGrade(grade: number): string {
+    return Number.isInteger(grade) ? String(grade) : grade.toFixed(2).replace(/\.00$/, '').replace(/0$/, '');
   }
 }
