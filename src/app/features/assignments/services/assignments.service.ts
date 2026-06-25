@@ -62,6 +62,41 @@ export interface PeerReviewAssignmentResult {
   assignments: PeerReviewAssignmentInfo[];
 }
 
+export interface PeerReviewReportMember {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  middleName: string | null;
+  totalCount: number;
+  completedCount: number;
+  remainingCount: number;
+  completionStatus: 'completed' | 'in_progress' | 'not_completed' | string;
+  isCompleted: boolean;
+}
+
+export interface PeerReviewReportTeam {
+  teamId: string;
+  teamName: string;
+  membersCount: number;
+  completedMembersCount: number;
+  remainingMembersCount: number;
+  isCompleted: boolean;
+  requiredRatingsCount: number;
+  receivedRatingsCount: number;
+  missingRatingsCount: number;
+  hasCompletePeerReview: boolean;
+  hasMissingRatings: boolean;
+  members: PeerReviewReportMember[];
+}
+
+export interface PeerReviewReport {
+  assignmentId: string;
+  peerReviewStartsAtUtc: string | null;
+  peerReviewEndsAtUtc: string | null;
+  teamsCount: number;
+  teams: PeerReviewReportTeam[];
+}
+
 export interface AssignmentCaptainInfo {
   assignmentId: string;
   isCaptain: boolean;
@@ -183,6 +218,10 @@ export class AssignmentsService {
       `${this.baseUrl}/${assignmentId}/peer-review/assignments/generate`,
       {},
     );
+  }
+
+  getPeerReviewReport(assignmentId: string): Observable<PeerReviewReport> {
+    return this.http.get<PeerReviewReport>(`${this.baseUrl}/${assignmentId}/peer-review/report`);
   }
 
   getCriterionGroups(assignmentId: string): Observable<CriterionGroup[]> {

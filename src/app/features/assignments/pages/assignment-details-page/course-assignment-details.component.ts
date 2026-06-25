@@ -36,6 +36,9 @@ import {
   AssignmentTeamMember,
   AssignmentTeamStudent,
   AssignmentsService,
+  PeerReviewReport,
+  PeerReviewReportMember,
+  PeerReviewReportTeam,
   UpdateAssignmentPeerReviewRequest,
 } from '../../../assignments/services/assignments.service';
 import { ProfileService } from '../../../profile/services/profile.service';
@@ -201,6 +204,9 @@ export class CourseAssignmentDetailsComponent implements OnInit {
 
   isSavingPeerReviewSettings = signal(false);
   isGeneratingPeerReviewAssignments = signal(false);
+  isPeerReviewReportLoading = signal(false);
+  peerReviewReport = signal<PeerReviewReport | null>(null);
+  peerReviewReportError = signal('');
 
   readonly selectedTeamStudents = computed(() => {
     const selectedIds = new Set(this.selectedTeamStudentIds());
@@ -288,6 +294,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
         this.loadTeamsIfAvailable(assignment);
         this.loadMySubmissionIfAvailable(assignment);
         this.applyPeerReviewSettingsIfAvailable(assignment);
+        this.loadPeerReviewReportIfAvailable(assignment);
         this.loadGradingRulesIfAvailable(assignment);
         this.loadCriteriaSettingsIfAvailable(assignment);
       },
@@ -400,8 +407,11 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   resetPeerReviewSettingsState(): void {
     this.peerReviewSettingsError.set('');
     this.peerReviewSettingsSuccess.set('');
+    this.peerReviewReportError.set('');
+    this.peerReviewReport.set(null);
     this.isSavingPeerReviewSettings.set(false);
     this.isGeneratingPeerReviewAssignments.set(false);
+    this.isPeerReviewReportLoading.set(false);
     this.peerReviewSettingsForm.reset({
       peerReviewEnabled: false,
       peerReviewStartsAtUtc: '',
@@ -458,6 +468,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
         this.applyPeerReviewSettingsToForm(updatedAssignment);
         this.isSavingPeerReviewSettings.set(false);
         this.peerReviewSettingsSuccess.set('Настройки peer-review сохранены');
+        this.loadPeerReviewReportIfAvailable(updatedAssignment);
       },
       error: (err) => {
         console.error(err);
@@ -486,6 +497,7 @@ export class CourseAssignmentDetailsComponent implements OnInit {
         this.peerReviewSettingsSuccess.set(
           `Назначения peer-review сформированы: ${result.assignments.length}`,
         );
+        this.loadPeerReviewReportIfAvailable(assignment);
       },
       error: (err) => {
         console.error(err);
@@ -589,6 +601,88 @@ export class CourseAssignmentDetailsComponent implements OnInit {
     }
 
     return new Date(startsAt).getTime() < new Date(endsAt).getTime();
+  }
+
+  loadPeerReviewReportIfAvailable(assignment: Assignment): void {
+    if (!this.canViewPeerReviewReport(assignment)) {
+      this.peerReviewReport.set(null);
+      this.peerReviewReportError.set('');
+      this.isPeerReviewReportLoading.set(false);
+      return;
+    }
+
+    this.loadPeerReviewReport(assignment.id);
+  }
+
+  canViewPeerReviewReport(assignment: Assignment): boolean {
+    return this.isTeacher() && assignment.peerReviewEnabled;
+  }
+
+  loadPeerReviewReport(assignmentId: string): void {
+    this.isPeerReviewReportLoading.set(true);
+    this.peerReviewReportError.set('');
+
+    this.assignmentsService.getPeerReviewReport(assignmentId).subscribe({
+      next: (report) => {
+        this.peerReviewReport.set(report);
+        this.isPeerReviewReportLoading.set(false);
+      },
+      error: (err) => {
+        console.error(err);
+        this.peerReviewReport.set(null);
+        this.isPeerReviewReportLoading.set(false);
+        this.peerReviewReportError.set(
+          this.getApiErrorMessage(err, 'Не удалось загрузить прогресс peer-review'),
+        );
+      },
+    });
+  }
+
+  refreshPeerReviewReport(): void {
+    const assignment = this.assignment();
+    if (!assignment || !this.canViewPeerReviewReport(assignment)) {
+      return;
+    }
+
+    this.loadPeerReviewReport(assignment.id);
+  }
+
+  getPeerReviewReportCompletedTeamsCount(): number {
+    return this.peerReviewReport()?.teams.filter((team) => team.isCompleted).length ?? 0;
+  }
+
+  getPeerReviewReportMissingRatingsCount(): number {
+    return (
+      this.peerReviewReport()?.teams.reduce((total, team) => total + team.missingRatingsCount, 0) ??
+      0
+    );
+  }
+
+  getPeerReviewIncompleteMembers(team: PeerReviewReportTeam): PeerReviewReportMember[] {
+    return team.members.filter((member) => !member.isCompleted);
+  }
+
+  getPeerReviewIncompleteMembersLabel(team: PeerReviewReportTeam): string {
+    return this.getPeerReviewIncompleteMembers(team)
+      .map((member) => this.getPeerReviewMemberName(member))
+      .join(', ');
+  }
+
+  getPeerReviewMemberName(member: PeerReviewReportMember): string {
+    return [member.lastName, member.firstName, member.middleName].filter(Boolean).join(' ');
+  }
+
+  getPeerReviewCompletionLabel(status: string): string {
+    switch (status) {
+      case 'completed':
+        return 'Готово';
+      case 'not_completed':
+        return 'Не завершено';
+      case 'in_progress':
+        return 'В процессе';
+      default:
+        return status;
+    }
   }
 
   loadGradingRulesIfAvailable(assignment: Assignment): void {
@@ -2716,6 +2810,14 @@ export class CourseAssignmentDetailsComponent implements OnInit {
   }
 
   trackByCaptainTeamMemberId(_: number, member: CaptainTeamMemberSubmissions): string {
+    return member.userId;
+  }
+
+  trackByPeerReviewTeamId(_: number, team: PeerReviewReportTeam): string {
+    return team.teamId;
+  }
+
+  trackByPeerReviewMemberId(_: number, member: PeerReviewReportMember): string {
     return member.userId;
   }
 }

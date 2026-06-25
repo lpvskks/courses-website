@@ -188,6 +188,11 @@
   color: #6d28d9;
 }
 
+.status-badge--danger {
+  background: #fff1f2;
+  color: #be123c;
+}
+
 .assignment-hero__title {
   margin: 0 0 14px;
   font-size: 34px;
@@ -415,6 +420,7 @@
 
 .grading-rules-card,
 .peer-review-settings-card,
+.peer-review-report-card,
 .criteria-settings-card,
 .comments-card,
 .submission-card {
@@ -452,6 +458,174 @@
   justify-content: flex-end;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.peer-review-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.peer-review-summary-card,
+.peer-review-team-card {
+  border-radius: 22px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border: 1px solid #dbeafe;
+}
+
+.peer-review-summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+}
+
+.peer-review-summary-card span,
+.peer-review-coverage-item span,
+.peer-review-missing-box span,
+.peer-review-member-row span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.peer-review-summary-card strong {
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.peer-review-team-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.peer-review-team-card {
+  padding: 18px;
+}
+
+.peer-review-team-card__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.peer-review-team-card__head h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.peer-review-team-card__head p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.peer-review-coverage-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.peer-review-coverage-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 16px;
+  background: #f8fbff;
+  border: 1px solid #e2e8f0;
+}
+
+.peer-review-coverage-item strong {
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.peer-review-coverage-item--warn {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.peer-review-coverage-item--warn strong {
+  color: #c2410c;
+}
+
+.peer-review-member-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.peer-review-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+.peer-review-member-row div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.peer-review-member-row strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.peer-review-member-status {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.peer-review-member-status--done {
+  background: #eefbf3;
+  color: #15803d;
+}
+
+.peer-review-member-status--late {
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.peer-review-missing-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+}
+
+.peer-review-missing-box strong {
+  color: #9a3412;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .grading-rules-section {
@@ -951,7 +1125,9 @@
 
   .criteria-group-form,
   .criteria-group-edit,
+  .peer-review-summary,
   .peer-review-settings-grid,
+  .peer-review-coverage-grid,
   .grading-mode-grid,
   .grading-penalties-grid,
   .grading-rules-grid,
@@ -964,6 +1140,12 @@
 
   .criteria-group-card__head {
     flex-direction: column;
+  }
+
+  .peer-review-team-card__head,
+  .peer-review-member-row {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .criterion-form__head,
@@ -999,6 +1181,7 @@
 
   .grading-rules-card,
   .peer-review-settings-card,
+  .peer-review-report-card,
   .criteria-settings-card,
   .comments-card {
     padding: 20px;

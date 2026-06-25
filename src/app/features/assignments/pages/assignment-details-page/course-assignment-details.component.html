@@ -453,6 +453,136 @@
       </form>
     </section>
 
+    <section class="peer-review-report-card" *ngIf="canViewPeerReviewReport(currentAssignment)">
+      <div class="section-header criteria-settings-card__header">
+        <div>
+          <h2 class="section-title">Прогресс peer-review</h2>
+          <p class="section-subtitle">
+            Команды, участники и покрытие оценками по назначенным взаимным проверкам.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="secondary-action-btn"
+          (click)="refreshPeerReviewReport()"
+          [disabled]="isPeerReviewReportLoading()"
+        >
+          {{ isPeerReviewReportLoading() ? 'Обновляем...' : 'Обновить' }}
+        </button>
+      </div>
+
+      <div class="loading-card" *ngIf="isPeerReviewReportLoading()">
+        Загружаем прогресс peer-review...
+      </div>
+
+      <div *ngIf="peerReviewReportError()" class="banner banner--error">
+        {{ peerReviewReportError() }}
+      </div>
+
+      <ng-container *ngIf="!isPeerReviewReportLoading() && peerReviewReport() as report">
+        <div class="peer-review-summary">
+          <article class="peer-review-summary-card">
+            <span>Команд</span>
+            <strong>{{ report.teamsCount }}</strong>
+          </article>
+
+          <article class="peer-review-summary-card">
+            <span>Завершили</span>
+            <strong>{{ getPeerReviewReportCompletedTeamsCount() }}</strong>
+          </article>
+
+          <article class="peer-review-summary-card">
+            <span>Не хватает оценок</span>
+            <strong>{{ getPeerReviewReportMissingRatingsCount() }}</strong>
+          </article>
+
+          <article class="peer-review-summary-card">
+            <span>Дедлайн</span>
+            <strong>
+              {{
+                report.peerReviewEndsAtUtc
+                  ? (report.peerReviewEndsAtUtc | date: 'dd.MM.yyyy HH:mm')
+                  : 'Не задан'
+              }}
+            </strong>
+          </article>
+        </div>
+
+        <div class="peer-review-team-list" *ngIf="report.teams.length; else emptyPeerReviewReport">
+          <article
+            class="peer-review-team-card"
+            *ngFor="let team of report.teams; trackBy: trackByPeerReviewTeamId"
+          >
+            <div class="peer-review-team-card__head">
+              <div>
+                <h3>{{ team.teamName }}</h3>
+                <p>
+                  {{ team.completedMembersCount }} из {{ team.membersCount }} участников завершили проверки
+                </p>
+              </div>
+
+              <span
+                class="status-badge"
+                [class.status-badge--submission]="team.isCompleted"
+                [class.status-badge--danger]="!team.isCompleted"
+              >
+                {{ team.isCompleted ? 'Готово' : 'Не завершено' }}
+              </span>
+            </div>
+
+            <div class="peer-review-coverage-grid">
+              <div class="peer-review-coverage-item">
+                <span>Получено оценок</span>
+                <strong>{{ team.receivedRatingsCount }}</strong>
+              </div>
+
+              <div class="peer-review-coverage-item">
+                <span>Нужно оценок</span>
+                <strong>{{ team.requiredRatingsCount }}</strong>
+              </div>
+
+              <div class="peer-review-coverage-item" [class.peer-review-coverage-item--warn]="team.hasMissingRatings">
+                <span>Не хватает</span>
+                <strong>{{ team.missingRatingsCount }}</strong>
+              </div>
+            </div>
+
+            <div class="peer-review-member-list">
+              <div
+                class="peer-review-member-row"
+                *ngFor="let member of team.members; trackBy: trackByPeerReviewMemberId"
+              >
+                <div>
+                  <strong>{{ getPeerReviewMemberName(member) }}</strong>
+                  <span>
+                    {{ member.completedCount }} / {{ member.totalCount }} проверок
+                  </span>
+                </div>
+
+                <span
+                  class="peer-review-member-status"
+                  [class.peer-review-member-status--done]="member.isCompleted"
+                  [class.peer-review-member-status--late]="member.completionStatus === 'not_completed'"
+                >
+                  {{ getPeerReviewCompletionLabel(member.completionStatus) }}
+                </span>
+              </div>
+            </div>
+
+            <div class="peer-review-missing-box" *ngIf="getPeerReviewIncompleteMembers(team).length">
+              <span>Не выполнили обязательные оценки</span>
+              <strong>{{ getPeerReviewIncompleteMembersLabel(team) }}</strong>
+            </div>
+          </article>
+        </div>
+
+        <ng-template #emptyPeerReviewReport>
+          <div class="empty-card">Данных по peer-review пока нет.</div>
+        </ng-template>
+      </ng-container>
+    </section>
+
     <section class="grading-rules-card" *ngIf="canManageCriteriaSettings()">
       <div class="section-header criteria-settings-card__header">
         <div>
